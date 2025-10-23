@@ -5,9 +5,9 @@ export async function getMethod<T>(
   url: string,
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
-  return enhancedFetch(url, { ...options, method: 'GET' }).then((r) =>
-    r.json()
-  );
+  const response = await enhancedFetch(url, { ...options, method: 'GET' });
+  const json = (await response.json()) as ApiResponse<T>;
+  return json;
 }
 
 export async function postMethod<T, D = unknown>(
@@ -16,7 +16,7 @@ export async function postMethod<T, D = unknown>(
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
   const isFormData = data instanceof FormData;
-  return enhancedFetch(url, {
+  const response = await enhancedFetch(url, {
     ...options,
     method: 'POST',
     body: isFormData ? data : JSON.stringify(data),
@@ -24,7 +24,9 @@ export async function postMethod<T, D = unknown>(
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options?.headers || {}),
     },
-  }).then((r) => r.json());
+  });
+
+  return (await response.json()) as ApiResponse<T>;
 }
 
 export async function putMethod<T, D = unknown>(
@@ -33,7 +35,7 @@ export async function putMethod<T, D = unknown>(
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
   const isFormData = data instanceof FormData;
-  return enhancedFetch(url, {
+  const response = await enhancedFetch(url, {
     ...options,
     method: 'PUT',
     body: isFormData ? data : JSON.stringify(data),
@@ -41,14 +43,16 @@ export async function putMethod<T, D = unknown>(
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options?.headers || {}),
     },
-  }).then((r) => r.json());
+  });
+
+  return (await response.json()) as ApiResponse<T>;
 }
 
 export async function deleteMethod<T>(
   url: string,
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
-  return enhancedFetch(url, { ...options, method: 'DELETE' }).then((r) =>
-    r.json()
-  );
+  const response = await enhancedFetch(url, { ...options, method: 'DELETE' });
+  const json = (await response.json()) as ApiResponse<T>;
+  return json;
 }

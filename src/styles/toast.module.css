@@ -1,0 +1,46 @@
+.default::after,
+.loading::after {
+  position: absolute;
+  width: 0.25rem;
+  height: 100%;
+  background-color: #242424;
+  left: 0;
+  top: 0;
+}
+
+.success::after,
+.promise::after {
+  position: absolute;
+  width: 0.25rem;
+  height: 100%;
+  background-color: #008a2e;
+  left: 0;
+  top: 0;
+}
+
+.warning::after {
+  position: absolute;
+  width: 0.25rem;
+  height: 100%;
+  background-color: #dc7609;
+  left: 0;
+  top: 0;
+}
+
+.error::after {
+  position: absolute;
+  width: 0.25rem;
+  height: 100%;
+  background-color: #e60000;
+  left: 0;
+  top: 0;
+}
+
+.info::after {
+  position: absolute;
+  width: 0.25rem;
+  height: 100%;
+  background-color: #0973dc;
+  left: 0;
+  top: 0;
+}

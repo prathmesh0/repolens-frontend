@@ -33,10 +33,10 @@ export default function Home() {
         <div className="mt-3 p-4 rounded-md bg-card shadow-md border border-border text-foreground">
           <p className="font-semibold">{data.message}</p>
           <p className="text-sm text-muted-foreground">
-            Status: {data.data.status}
+            {/* Status: {data?.data?.status || ""} */}
           </p>
           <p className="text-sm text-muted-foreground">
-            Uptime: {data.data.uptime.toFixed(2)}s
+            {/* Uptime: {data.data.uptime.toFixed(2)}s */}
           </p>
         </div>
       )}

@@ -24,6 +24,12 @@ export interface FetchInterceptor {
 
 export type ApiResponse<T = unknown> = ApiBaseResponse<T>;
 
+export interface ApiBaseResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
 export interface ApiPaginatedData<K> {
   data: K[];
   pageInfo: {

@@ -52,8 +52,16 @@ export async function createInterceptor(): Promise<FetchInterceptor> {
 export async function enhancedFetch(input: RequestInfo, init?: RequestInit) {
   const interceptor = await createInterceptor();
   const modifiedRequest = interceptor.request.handler({ input, init });
+  console.log('✅ BASE_URL:', BASE_URL);
 
-  const response = await fetch(`${BASE_URL}${modifiedRequest.input}`, {
+  const inputUrl =
+    typeof modifiedRequest.input === 'string' &&
+    (modifiedRequest.input.startsWith('http://') ||
+      modifiedRequest.input.startsWith('https://'))
+      ? modifiedRequest.input // already full URL → don’t prefix
+      : `${BASE_URL}${modifiedRequest.input}`;
+
+  const response = await fetch(inputUrl, {
     ...modifiedRequest.init,
     cache: 'no-cache',
   });

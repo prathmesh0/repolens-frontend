@@ -2,6 +2,8 @@
 import React from 'react';
 import TanstackQueryProvider from '../providers/TanstackQueryProvider';
 import { NuqsAdapter } from 'nuqs/adapters/react';
+import { AppContextProvider } from './AppContextProvider';
+import ToastProvider from './ToastProvider';
 
 type Props = {
   children: React.ReactNode;
@@ -10,7 +12,11 @@ type Props = {
 const Provider = ({ children }: Props) => {
   return (
     <NuqsAdapter>
-      <TanstackQueryProvider>{children}</TanstackQueryProvider>
+      <TanstackQueryProvider>
+        <AppContextProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AppContextProvider>
+      </TanstackQueryProvider>
     </NuqsAdapter>
   );
 };
