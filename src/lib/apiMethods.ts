@@ -1,58 +1,32 @@
 import { enhancedFetch } from '@/api/interceptor';
-import { ApiResponse } from '@/types/api';
 
-export async function getMethod<T>(
-  url: string,
-  options?: RequestInit
-): Promise<ApiResponse<T>> {
-  const response = await enhancedFetch(url, { ...options, method: 'GET' });
-  const json = (await response.json()) as ApiResponse<T>;
-  return json;
+export async function apiGet(endpoint: string) {
+  const res = await enhancedFetch(endpoint, { method: 'GET' });
+  return res.json();
 }
 
-export async function postMethod<T, D = unknown>(
-  url: string,
-  data?: D,
-  options?: RequestInit
-): Promise<ApiResponse<T>> {
-  const isFormData = data instanceof FormData;
-  const response = await enhancedFetch(url, {
-    ...options,
+export async function apiPost(endpoint: string, body?: unknown) {
+  const options: RequestInit = {
     method: 'POST',
-    body: isFormData ? data : JSON.stringify(data),
-    headers: {
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(options?.headers || {}),
-    },
-  });
+    headers: { 'Content-Type': 'application/json' },
+  };
 
-  return (await response.json()) as ApiResponse<T>;
+  if (body) options.body = JSON.stringify(body);
+
+  const res = await enhancedFetch(endpoint, options);
+  return res.json();
 }
 
-export async function putMethod<T, D = unknown>(
-  url: string,
-  data?: D,
-  options?: RequestInit
-): Promise<ApiResponse<T>> {
-  const isFormData = data instanceof FormData;
-  const response = await enhancedFetch(url, {
-    ...options,
+export async function apiPut(endpoint: string, body: unknown) {
+  const res = await enhancedFetch(endpoint, {
     method: 'PUT',
-    body: isFormData ? data : JSON.stringify(data),
-    headers: {
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(options?.headers || {}),
-    },
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-
-  return (await response.json()) as ApiResponse<T>;
+  return res.json();
 }
 
-export async function deleteMethod<T>(
-  url: string,
-  options?: RequestInit
-): Promise<ApiResponse<T>> {
-  const response = await enhancedFetch(url, { ...options, method: 'DELETE' });
-  const json = (await response.json()) as ApiResponse<T>;
-  return json;
+export async function apiDelete(endpoint: string) {
+  const res = await enhancedFetch(endpoint, { method: 'DELETE' });
+  return res.json();
 }

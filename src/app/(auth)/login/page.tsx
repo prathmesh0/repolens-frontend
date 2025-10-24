@@ -1,110 +1,143 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 import {
   Card,
-  CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardContent,
+  CardDescription,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useAppContext } from '@/providers/AppContextProvider';
+import CustomInput from '@/components/CustomInput';
+import CustomButton from '@/components/CustomButton';
+import { Form, Formik } from 'formik';
+import { BODY } from '@/lib/Config';
+import { Y } from '@/lib/yup';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
+import { useAppContext } from '@/providers/AppContextProvider';
+import { Assets } from '@/lib/Assets';
 
-const LoginPage = () => {
+export default function LoginPage() {
   const { handleLogin } = useAppContext();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const router = useRouter();
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      if (!email || !password) {
-        setError('Please fill in all fields');
-        return;
-      }
-
-      // Call global handler passing credentials
-      await handleLogin({ email, password });
-      router.push('/home');
-    } catch (err) {
-      setError(`Something went wrong ${err}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
-      <Card className="w-full max-w-md bg-primary-foreground/10 backdrop-blur-md text-primary-foreground border border-border shadow-lg">
-        <CardHeader>
+    <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
+      {/* Background Image */}
+      <div className="absolute inset-0 -z-10">
+        <Image
+          src={Assets.LoginBackground}
+          alt="Login background"
+          fill
+          priority
+          className="object-cover opacity-60"
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/60" />
+      </div>
+
+      {/* Login Card */}
+      <Card className="w-full max-w-md bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg">
+        <CardHeader className="flex flex-col items-center gap-3">
+          {/* Logo */}
+          {/* <div className="w-14 h-14 relative">
+            <Image
+              src={Assets.Logo}
+              alt="Repolens Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div> */}
           <CardTitle className="text-center text-2xl font-semibold tracking-tight">
-            Welcome Back 👋
+            Welcome Back to Repolens
           </CardTitle>
           <CardDescription className="text-center text-gray-300">
-            Login to your Repolens account
+            Enter your email and password to continue
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={onSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="prathmesh@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="bg-white/10 border-white/20 text-white placeholder-primary-foreground"
-              />
-            </div>
+          <Formik
+            initialValues={BODY.USERS.LOGIN()}
+            onSubmit={async (values, { setSubmitting }) => {
+              try {
+                await handleLogin(values);
+              } catch (err) {
+                console.error('Login submit error:', err);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+            validationSchema={Y.loginSchema}
+          >
+            {({
+              handleBlur,
+              handleChange,
+              values,
+              touched,
+              errors,
+              isValid,
+              dirty,
+            }) => (
+              <Form className="space-y-4 sm:space-y-5 lg:space-y-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <CustomInput
+                    id="email"
+                    type="email"
+                    label="Email Address"
+                    placeholder="Enter Email Address"
+                    name="email"
+                    value={values.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={touched.email ? errors.email : ''}
+                  />
+                  <CustomInput
+                    id="password"
+                    type="password"
+                    label="Password"
+                    placeholder="Enter Password"
+                    name="password"
+                    value={values.password}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={touched.password ? errors.password : ''}
+                  />
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-white/10 border-white/20 text-white placeholder-primary-foreground"
-              />
-            </div>
+                  {/* Forgot password link */}
+                  <div className="flex justify-end">
+                    <Link
+                      href="/forgot-password"
+                      className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                </div>
 
-            {error && (
-              <p className="text-red-400 text-center text-sm">{error}</p>
+                <CustomButton
+                  type="submit"
+                  disabled={!(isValid && dirty)}
+                  className="w-full"
+                >
+                  Login
+                </CustomButton>
+
+                {/* Register link */}
+                <p className="text-center text-sm text-gray-300">
+                  Haven’t signed up yet?{' '}
+                  <Link
+                    href="/register"
+                    className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                  >
+                    Register
+                  </Link>
+                </p>
+              </Form>
             )}
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </Button>
-
-            <p className="text-sm text-center text-gray-400 mt-3">
-              {`Don't have an account?`}{' '}
-              <Link href="/register" className="text-blue-400 hover:underline">
-                Register here
-              </Link>
-            </p>
-          </form>
+          </Formik>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default LoginPage;
+}

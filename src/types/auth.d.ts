@@ -3,6 +3,13 @@ export interface ILogin {
   password: string;
 }
 
+export interface IRegister {
+  username: string;
+  email: string;
+  password: string;
+}
+
+
 export interface ILoginResponse {
   user: {
     _id: string;

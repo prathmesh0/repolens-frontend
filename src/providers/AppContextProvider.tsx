@@ -1,6 +1,7 @@
-import { User } from '@/api/services';
+import { apiPost } from '@/lib/apiMethods';
 import { Toast } from '@/lib/Toast';
-import { ILogin } from '@/types/auth';
+import { removeFromLocalStorage, saveToLocalStorage } from '@/lib/utils';
+import { ILogin, IRegister } from '@/types/auth';
 import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
@@ -20,7 +21,8 @@ interface IAuth {
 
 interface IAppContext {
   auth: IAuth;
-  handleLogin: ({ email, password }: ILogin) => Promise<void>;
+  handleLogin: (values: ILogin) => Promise<void>;
+  handleRegister: (values: IRegister) => Promise<void>;
   handleLogout: () => void;
 }
 
@@ -30,6 +32,7 @@ const initialAuthState: IAuth = {
   accessToken: null,
   refreshToken: null,
 };
+
 const AppContext = createContext<IAppContext | undefined>(undefined);
 
 export const AppContextProvider = ({
@@ -57,31 +60,80 @@ export const AppContextProvider = ({
     }
   }, [auth]);
 
-  async function handleLogin(body: ILogin) {
-    const response = await User.handleLogin(body);
-    if (response?.success) {
-      setAuth({
-        isAuthenticated: true,
-        user: response?.data?.data?.user,
-        accessToken: response.data?.data?.accessToken,
-        refreshToken: response.data?.data?.refreshToken,
-      });
-      Toast.success('Logged in successfully');
-      setTimeout(() => router.push('/home'), 300); // ✅ navigate after small delay
-      console.log('✅ Logged in successful and navigated to home');
-    } else {
-      Toast.error(response?.message || 'Login failed');
-    }
-  }
+  const handleLogin = async (values: ILogin) => {
+    try {
+      const res = await apiPost('/users/login', values);
 
-  function handleLogout() {
-    setAuth(initialAuthState);
-    localStorage.clear();
-    router.push('/login');
-  }
+      if (res?.statusCode === 200) {
+        const { accessToken, refreshToken, user } = res.data;
+
+        // Save to localStorage for persistence
+        saveToLocalStorage('token', accessToken);
+        saveToLocalStorage('refreshToken', refreshToken);
+        saveToLocalStorage('user', user);
+
+        // Update context state
+        setAuth({
+          isAuthenticated: true,
+          user,
+          accessToken,
+          refreshToken,
+        });
+
+        Toast.success(res?.message || 'Logged in successfully');
+        setTimeout(() => router.push('/home'), 300);
+      } else {
+        Toast.error(res?.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error('❌ Login error:', err);
+      Toast.error('Something went wrong. Try again.');
+    }
+  };
+
+  const handleRegister = async (values: IRegister) => {
+    try {
+      const res = await apiPost('/users/register', values);
+
+      if (res?.statusCode === 200) {
+        Toast.success('Registered successfully!');
+        router.push('/login');
+      } else {
+        Toast.error(res?.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error('❌ Register error:', err);
+      Toast.error('Something went wrong. Try again.');
+    }
+  };
+  const handleLogout = async () => {
+    try {
+      // Call backend logout API
+      const res = await apiPost('/users/logout');
+
+      if (res?.statusCode === 200) {
+        Toast.success('Logged out successfully');
+      } else {
+        Toast.error(res?.message || 'Logout failed');
+      }
+    } catch (err) {
+      console.error('❌ Logout error:', err);
+      Toast.error('Something went wrong during logout');
+    } finally {
+      // Clear all local/session data no matter what
+      setAuth(initialAuthState);
+      removeFromLocalStorage('token');
+      removeFromLocalStorage('refreshToken');
+      removeFromLocalStorage('user');
+      localStorage.removeItem('auth');
+      router.push('/login');
+    }
+  };
 
   return (
-    <AppContext.Provider value={{ auth, handleLogin, handleLogout }}>
+    <AppContext.Provider
+      value={{ auth, handleLogin, handleLogout, handleRegister }}
+    >
       {children}
     </AppContext.Provider>
   );

@@ -1,71 +1,31 @@
-import { FetchInterceptor } from '@/types/api';
-import { removeFromLocalStorage } from '@/lib/utils';
+import { clearAuthStorage, getFromLocalStorage } from '@/lib/utils';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
-export async function createInterceptor(): Promise<FetchInterceptor> {
-  const interceptors: FetchInterceptor = {
-    request: {
-      use: (handler) => {
-        interceptors.request.handler = handler;
-      },
-      handler: (request) => {
-        const headers = new Headers(request.init?.headers);
-        const token = localStorage.getItem('token')
-          ? JSON.parse(localStorage.getItem('token') || '{}')
-          : null;
-
-        if (token?.value) {
-          headers.append('Authorization', `Bearer ${token.value}`);
-        }
-
-        return { ...request, init: { ...request.init, headers } };
-      },
-    },
-
-    response: {
-      use: (handler) => {
-        interceptors.response.handler = handler;
-      },
-      handler: (response) => {
-        // Handle expired or invalid tokens
-        if (response.status === 401) {
-          removeFromLocalStorage('token');
-          removeFromLocalStorage('auth');
-
-          if (
-            typeof window !== 'undefined' &&
-            window.location.pathname !== '/'
-          ) {
-            window.location.href = '/';
-          }
-        }
-
-        return response;
-      },
-    },
-  };
-
-  return interceptors;
-}
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export async function enhancedFetch(input: RequestInfo, init?: RequestInit) {
-  const interceptor = await createInterceptor();
-  const modifiedRequest = interceptor.request.handler({ input, init });
-  console.log('✅ BASE_URL:', BASE_URL);
+  // Add Authorization header if token exists
+  const token = getFromLocalStorage('token');
+  const headers = new Headers(init?.headers || {});
 
-  const inputUrl =
-    typeof modifiedRequest.input === 'string' &&
-    (modifiedRequest.input.startsWith('http://') ||
-      modifiedRequest.input.startsWith('https://'))
-      ? modifiedRequest.input // already full URL → don’t prefix
-      : `${BASE_URL}${modifiedRequest.input}`;
+  if (token) headers.append('Authorization', `Bearer ${token}`);
+  const finalUrl =
+    typeof input === 'string' && !input.startsWith('http')
+      ? `${BASE_URL}${input}`
+      : input;
 
-  const response = await fetch(inputUrl, {
-    ...modifiedRequest.init,
+  const response = await fetch(finalUrl, {
+    ...init,
+    headers,
     cache: 'no-cache',
   });
 
-  const handledResponse = await interceptor.response.handler(response);
-  return handledResponse;
+  // Handle unauthorized token
+  if (response.status === 401) {
+    clearAuthStorage();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  }
+  return response;
 }

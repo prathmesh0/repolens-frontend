@@ -3,8 +3,11 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import CustomButton from '@/components/CustomButton';
+import { useAppContext } from '@/providers/AppContextProvider';
 
 export default function HomePage() {
+  const { handleLogout } = useAppContext();
   return (
     <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-primary-foreground font-sans">
       {/* Hero Section */}
@@ -59,6 +62,8 @@ export default function HomePage() {
           </Card>
         ))}
       </section>
+
+      <CustomButton onClick={handleLogout}>Logout</CustomButton>
 
       {/* Footer */}
       <footer className="w-full text-center py-6 border-t border-border text-muted-foreground text-sm">
