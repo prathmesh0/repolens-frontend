@@ -15,7 +15,7 @@ export const removeFromLocalStorage = (key: string) => {
 };
 
 export const getFromLocalStorage = (key: string) => {
-  if (typeof window === "undefined") return null;
+  if (typeof window === 'undefined') return null;
   const item = localStorage.getItem(key);
   return item ? JSON.parse(item) : null;
 };
@@ -25,3 +25,11 @@ export const clearAuthStorage = () => {
   removeFromLocalStorage('refreshToken');
   removeFromLocalStorage('user');
 };
+
+export function parseJSONSafe(content: string) {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}

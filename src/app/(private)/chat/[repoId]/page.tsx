@@ -2,7 +2,6 @@
 
 import { JSX, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Star, GitFork, Eye } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { ChatService, Repository } from '@/api/services';
 import ChatMessage from '@/components/ChatMessage';
@@ -15,8 +14,12 @@ import {
   IChatRequest,
   IFileStructureRepoInfo,
   IFullRepoInfo,
+  IRepoChatMessage,
 } from '@/types/chat';
 import CustomLoader from '@/components/CustomLoader';
+import { parseJSONSafe } from '@/lib/utils';
+import RepoBasicInfoCard from '@/components/RepoInfoBasicCard';
+import RepoAIAnalysisCard from '@/components/RepoAiAnalysisCard';
 
 type ChatMessageType = {
   sender: 'user' | 'assistant';
@@ -61,63 +64,96 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
 
   // ✅ Fetch repo info via React Query
-  const { data, isLoading, isError, isSuccess } = useQuery({
+  const {
+    data: repoInfoResponse,
+    isLoading: isRepoLoading,
+    refetch: refetchRepoInfo,
+    isSuccess: isRepoSuccess,
+  } = useQuery({
     queryKey: ['repoInfo', repoId],
     queryFn: async () => {
       const res = await Repository.getRepoInfo(repoId);
       return res;
     },
+    enabled: false,
   });
 
-  // const { data: chatHistory, isLoading: isHistoryLoading } = useQuery({
-  //   queryKey: ['chatHistory', repoId],
-  //   queryFn: async () => {
-  //     const res = await ChatService.chatHistory(repoId); // implement this in your service
-  //     return res?.data?.messages;
-  //   },
-  //   enabled: !!repoId, // fetch only when repoId exists
-  // });
+  const {
+    data: chatHistory,
+    isLoading: isHistoryLoading,
+    isSuccess: isHistorySuccess,
+    isError: isHistoryError,
+  } = useQuery({
+    queryKey: ['chatHistory', repoId],
+    queryFn: async () => {
+      const res = await ChatService.chatHistory(repoId); // implement this in your service
+      return res?.data?.messages;
+    },
+    enabled: !!repoId, // fetch only when repoId exists
+  });
 
-  const actionMap: Record<string, string | undefined> = {
-    'Basic Analysis': 'basicAnalysis',
-    'Get File Structure': 'fileStructure',
-    'AI Analysis': 'aiAnalysis',
-  };
+  // ✅ Load chat history on mount
+  useEffect(() => {
+    if (isHistorySuccess) {
+      if (chatHistory && chatHistory.length > 0) {
+        const formattedMessages: ChatMessageType[] = chatHistory.map(
+          (msg: IRepoChatMessage) => {
+            const parsed = parseJSONSafe(msg.content);
 
-  const repoInfo = isFullRepoInfo(data) ? data.data.basicInfo : undefined;
+            // 🧠 If assistant message and JSON, render structured component
+            if (msg.role === 'assistant' && parsed) {
+              if (parsed.basicInfo) {
+                return {
+                  sender: 'assistant',
+                  message: (
+                    <RepoBasicInfoCard repoInfo={parsed.basicInfo} showHeader />
+                  ),
+                };
+              } else if (parsed.fileStructure) {
+                return {
+                  sender: 'assistant',
+                  message: <FileTree fileStructure={parsed.fileStructure} />,
+                };
+              } else if (parsed.aiAnalysis) {
+                return {
+                  sender: 'assistant',
+                  message: (
+                    <RepoAIAnalysisCard
+                      aiAnalysis={parsed.aiAnalysis}
+                      showHeader
+                    />
+                  ),
+                };
+              }
+            }
+
+            // Default (for user or plain text messages)
+            return {
+              sender: msg.role,
+              message: msg.content,
+            };
+          }
+        );
+
+        setMessages(formattedMessages);
+      } else {
+        // 🆕 No chat history — fetch repo info
+        refetchRepoInfo();
+      }
+    }
+  }, [isHistorySuccess, chatHistory, refetchRepoInfo]);
+
+  const repoInfo = isFullRepoInfo(repoInfoResponse)
+    ? repoInfoResponse.data.basicInfo
+    : undefined;
 
   console.log('InitialRepoInfo', repoInfo);
 
   // when repoInfo is fetched, add as assistant message
   useEffect(() => {
-    if (isSuccess && repoInfo) {
+    if (isRepoSuccess && repoInfo) {
       const repoMessage = (
-        <div className="space-y-2">
-          <p className="font-semibold text-lg text-primary">{repoInfo.name}</p>
-          <p>{repoInfo.description}</p>
-          <div className="flex items-center gap-4 mt-2 text-muted-foreground text-sm">
-            <span className="flex items-center gap-1">
-              <Star className="w-4 h-4 text-yellow-500" /> {repoInfo.stars}
-            </span>
-            <span className="flex items-center gap-1">
-              <GitFork className="w-4 h-4 text-blue-500" /> {repoInfo.forks}
-            </span>
-            <span className="flex items-center gap-1">
-              <Eye className="w-4 h-4 text-green-500" /> {repoInfo.watchers}
-            </span>
-          </div>
-          <p className="text-xs">
-            <span className="font-medium">Languages:</span>{' '}
-            {repoInfo.languages?.join(', ') || 'N/A'}
-          </p>
-          <p className="text-xs">
-            <span className="font-medium">Owner:</span> {repoInfo.owner}
-          </p>
-          <p className="text-xs">
-            <span className="font-medium">Last Synced:</span>{' '}
-            {new Date(repoInfo.lastSynced).toLocaleString()}
-          </p>
-        </div>
+        <RepoBasicInfoCard repoInfo={repoInfo} showHeader={false} />
       );
 
       // prevent duplicate push if data refetches
@@ -132,7 +168,29 @@ export default function ChatPage() {
         return [...prev, { sender: 'assistant', message: repoMessage }];
       });
     }
-  }, [isSuccess, repoInfo]);
+  }, [isRepoSuccess, repoInfo]);
+
+  if (isRepoLoading || isHistoryLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <CustomLoader className="h-12 w-12" />
+      </div>
+    );
+  }
+
+  if (isHistoryError) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-500">
+        ⚠️ Failed to load data. Please try again later.
+      </div>
+    );
+  }
+
+  const actionMap: Record<string, string | undefined> = {
+    'Basic Analysis': 'basicAnalysis',
+    'Get File Structure': 'fileStructure',
+    'AI Analysis': 'aiAnalysis',
+  };
 
   const handleSend = async (msg: IChatRequest) => {
     // 1️⃣ Add user's message to chat
@@ -216,59 +274,7 @@ export default function ChatPage() {
 
       if (isBasicRepoInfo(res)) {
         const repo = res.data.basicInfo;
-        assistantMessage = (
-          <div className="p-4 rounded-2xl border border-border bg-muted/30 shadow-sm space-y-3">
-            <h3 className="text-lg font-semibold text-primary">
-              📦 Basic Repository Information
-            </h3>
-
-            <div className="space-y-1">
-              <p className="text-xl font-semibold text-foreground">
-                {repo.name}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {repo.description}
-              </p>
-            </div>
-
-            <div className="pt-2 text-sm text-muted-foreground space-y-1">
-              <p>
-                <span className="font-medium text-foreground">👤 Owner:</span>{' '}
-                {repo.owner}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">
-                  🗣 Languages:
-                </span>{' '}
-                {repo.languages?.join(', ')}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">⭐ Stars:</span>{' '}
-                {repo.stars} &nbsp;|&nbsp;
-                <span className="font-medium text-foreground">
-                  🍴 Forks:
-                </span>{' '}
-                {repo.forks} &nbsp;|&nbsp;
-                <span className="font-medium text-foreground">
-                  👀 Watchers:
-                </span>{' '}
-                {repo.watchers}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">
-                  🌿 Branches:
-                </span>{' '}
-                {repo.branches?.join(', ')}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">
-                  📅 Last Synced:
-                </span>{' '}
-                {new Date(repo.lastSynced).toLocaleString()}
-              </p>
-            </div>
-          </div>
-        );
+        assistantMessage = <RepoBasicInfoCard repoInfo={repo} showHeader />;
       } else if (isFileStructureRepoInfo(res)) {
         assistantMessage = <FileTree fileStructure={res.data.fileStructure} />;
       }
@@ -283,54 +289,13 @@ export default function ChatPage() {
       else if (isAIAnalysisResponse(res)) {
         const { aiAnalysis, status } = res.data;
 
-        if (status === 'ready') {
-          assistantMessage = (
-            <div className="p-4 rounded-2xl border border-border bg-muted/30 shadow-sm space-y-3">
-              <h3 className="text-lg font-semibold text-primary">
-                🤖 AI Analysis Summary
-              </h3>
-
-              <div className="space-y-1">
-                <p className="text-sm leading-relaxed">{aiAnalysis.summary}</p>
-              </div>
-
-              <div className="pt-2 text-sm text-muted-foreground space-y-1">
-                <p>
-                  <span className="font-medium text-foreground">
-                    🧠 Complexity:
-                  </span>{' '}
-                  {aiAnalysis.complexity}
-                </p>
-                <p>
-                  <span className="font-medium text-foreground">
-                    🏗 Architecture:
-                  </span>{' '}
-                  {aiAnalysis.architecture}
-                </p>
-                {aiAnalysis.potentialIssues?.length > 0 && (
-                  <div className="pt-2">
-                    <p className="font-medium text-foreground mb-1">
-                      ⚠ Potential Issues:
-                    </p>
-                    <ul className="list-disc list-inside text-sm space-y-1">
-                      {aiAnalysis.potentialIssues.map(
-                        (issue: string, i: number) => (
-                          <li key={i}>{issue}</li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        } else {
-          assistantMessage = (
-            <div className="p-3 rounded-lg border bg-muted/60 text-muted-foreground">
-              ⏳ AI analysis is still running. Please wait.
-            </div>
-          );
-        }
+        assistantMessage = (
+          <RepoAIAnalysisCard
+            aiAnalysis={aiAnalysis}
+            status={status}
+            showHeader
+          />
+        );
       } else if (isFullRepoInfo(res)) {
         const repo = res.basicInfo;
         assistantMessage = (
@@ -358,22 +323,6 @@ export default function ChatPage() {
       console.log(error);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <CustomLoader className="h-12 w-12" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-screen text-red-500">
-        ⚠️ Failed to load repository information. Please try again later.
-      </div>
-    );
-  }
 
   return (
     <main className="flex flex-col h-full bg-background text-foreground ">
