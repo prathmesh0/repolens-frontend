@@ -9,7 +9,6 @@ export interface IRegister {
   password: string;
 }
 
-
 export interface ILoginResponse {
   user: {
     _id: string;
@@ -22,6 +21,10 @@ export interface ILoginResponse {
   };
   accessToken: string;
   refreshToken: string;
+}
+
+export interface ILogoutResponse {
+  [key: string]: never;
 }
 
 export interface IRegister {

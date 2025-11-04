@@ -1,7 +1,13 @@
 import { apiPost } from '@/lib/apiMethods';
 import { Toast } from '@/lib/Toast';
 import { removeFromLocalStorage, saveToLocalStorage } from '@/lib/utils';
-import { ILogin, IRegister } from '@/types/auth';
+import { ApiBaseResponse } from '@/types/api';
+import {
+  ILogin,
+  ILoginResponse,
+  ILogoutResponse,
+  IRegister,
+} from '@/types/auth';
 import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
@@ -62,7 +68,10 @@ export const AppContextProvider = ({
 
   const handleLogin = async (values: ILogin) => {
     try {
-      const res = await apiPost('/users/login', values);
+      const res = await apiPost<ApiBaseResponse<ILoginResponse>>(
+        '/users/login',
+        values
+      );
 
       if (res?.statusCode === 200) {
         const { accessToken, refreshToken, user } = res.data;
@@ -93,7 +102,10 @@ export const AppContextProvider = ({
 
   const handleRegister = async (values: IRegister) => {
     try {
-      const res = await apiPost('/users/register', values);
+      const res = await apiPost<ApiBaseResponse<IRegister>>(
+        '/users/register',
+        values
+      );
 
       if (res?.statusCode === 200) {
         Toast.success('Registered successfully!');
@@ -109,7 +121,9 @@ export const AppContextProvider = ({
   const handleLogout = async () => {
     try {
       // Call backend logout API
-      const res = await apiPost('/users/logout');
+      const res = await apiPost<ApiBaseResponse<ILogoutResponse>>(
+        '/users/logout'
+      );
 
       if (res?.statusCode === 200) {
         Toast.success('Logged out successfully');

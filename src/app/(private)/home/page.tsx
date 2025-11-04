@@ -1,0 +1,176 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { Search } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useFormik } from 'formik';
+import { BODY } from '@/lib/Config';
+import { Y } from '@/lib/yup';
+import { useRouter } from 'next/navigation';
+import { Repository } from '@/api/services';
+import { Toast } from '@/lib/Toast';
+import { IAnalyse } from '@/types/repo';
+import CustomInput from '@/components/CustomInput';
+import CustomButton from '@/components/CustomButton';
+
+export default function HomePage() {
+  const [user, setUser] = useState<{ username: string; email: string } | null>(
+    null
+  );
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        console.error('Failed to parse user from localStorage');
+      }
+    }
+  }, []);
+
+  const formik = useFormik<IAnalyse>({
+    initialValues: BODY.REPOSITORY.ANALYSE(),
+    validationSchema: Y.repoAnalyseSchema,
+    onSubmit: async (val) => {
+      setLoading(true);
+      const res = await Repository.analyseRepository(val);
+      setLoading(false);
+      if (res?.success || res?.statusCode === 201) {
+        const repoInfo = res.data.basicInfo;
+        Toast.success(
+          `Analysis started! This might take a few minutes to complete.`,
+          { duration: 5000 }
+        );
+
+        // Navigate to chat page after short delay
+        router.push(`/chat/${repoInfo._id}`);
+      } else {
+        Toast.error(res?.message || 'Something went wrong');
+      }
+    },
+  });
+
+  return (
+    <main className="h-full w-full flex flex-col items-center justify-between bg-background text-foreground overflow-x-hidden">
+      {/* Hero Section */}
+      <section className="flex flex-col items-center text-center mt-20 mb-10 px-4 space-y-6 max-w-4xl">
+        <motion.h1
+          initial={{ opacity: 0, y: -30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className="text-5xl font-semibold tracking-tight bg-gradient-to-r from-[oklch(0.6716_0.1368_48.513)] to-[oklch(0.536_0.0398_196.028)] text-transparent bg-clip-text"
+        >
+          Welcome{user ? `, ${user.username}` : ''} to Repolens
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.8 }}
+          className="max-w-2xl text-lg text-muted-foreground"
+        >
+          Repolens empowers developers to analyze and understand their
+          repositories using AI. Explore your codebase, view insightful reports,
+          and chat with your intelligent assistant — all in one place.
+        </motion.p>
+      </section>
+
+      {/* Input + Button Section */}
+      <motion.form
+        onSubmit={formik.handleSubmit}
+        initial={{ opacity: 0, y: 25 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
+        className="flex flex-col sm:flex-row items-center gap-3 mt-6 mb-20 w-full max-w-md px-4"
+      >
+        <div className="flex w-full items-start gap-4">
+          <div className="flex-1">
+            <CustomInput
+              type="text"
+              placeholder="Enter your repository URL..."
+              value={formik.values.url}
+              name="url"
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              error={formik.touched.url ? (formik.errors.url as string) : ''}
+              className="h-10"
+            />
+          </div>
+
+          <CustomButton
+            type="submit"
+            disabled={loading || !formik.values.url || !!formik.errors.url}
+            className="flex items-center gap-2 bg-primary text-primary-foreground  h-10 px-6 py-3 rounded-lg hover:opacity-90 transition-all duration-200"
+          >
+            {loading ? (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="animate-pulse"
+              >
+                Analysing...
+              </motion.span>
+            ) : (
+              <>
+                <Search className="w-4 h-4" />
+                Analyse
+              </>
+            )}
+          </CustomButton>
+        </div>
+      </motion.form>
+
+      {/* Animated Features Section */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-8 px-6 mb-20 max-w-6xl">
+        {[
+          {
+            title: 'AI Repository Insights',
+            desc: "Get instant, intelligent breakdowns of your repo's structure and performance metrics using cutting-edge AI.",
+          },
+          {
+            title: 'File Structure Visualizer',
+            desc: 'Explore your project’s file hierarchy with clean, intuitive diagrams enriched with smart recommendations.',
+          },
+          {
+            title: 'Chat with AI Assistant',
+            desc: 'Interact directly with an AI trained to understand your project. Ask questions, get suggestions, and debug faster.',
+          },
+        ].map((feature, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{
+              delay: 0.2 + i * 0.15,
+              duration: 0.5,
+              ease: 'easeOut',
+            }}
+          >
+            <Card className="bg-card/80 backdrop-blur-sm text-card-foreground hover:shadow-xl hover:scale-[1.03] transition-transform duration-300 ease-in-out border border-border rounded-xl">
+              <CardContent className="space-y-3 p-6">
+                <CardTitle className="text-xl font-semibold text-primary">
+                  {feature.title}
+                </CardTitle>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {feature.desc}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </section>
+
+      {/* Footer */}
+      <footer className="w-full text-center py-6 border-t border-border text-muted-foreground text-sm backdrop-blur-md">
+        © {new Date().getFullYear()}{' '}
+        <span className="font-semibold text-primary">Repolens</span>. All rights
+        reserved.
+      </footer>
+    </main>
+  );
+}

@@ -19,4 +19,9 @@ export class Y {
       .min(6, 'Password must be atleast 6 characters')
       .required('Password is required'),
   });
+  public static repoAnalyseSchema = Yup.object({
+    url: Yup.string()
+      .url('Please enter a valid repository URL')
+      .required('Repository URL is required'),
+  });
 }

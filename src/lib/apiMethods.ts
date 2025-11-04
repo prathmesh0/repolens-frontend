@@ -1,11 +1,11 @@
 import { enhancedFetch } from '@/api/interceptor';
 
-export async function apiGet(endpoint: string) {
+export async function apiGet<T>(endpoint: string): Promise<T> {
   const res = await enhancedFetch(endpoint, { method: 'GET' });
   return res.json();
 }
 
-export async function apiPost(endpoint: string, body?: unknown) {
+export async function apiPost<T>(endpoint: string, body?: unknown): Promise<T> {
   const options: RequestInit = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -14,7 +14,7 @@ export async function apiPost(endpoint: string, body?: unknown) {
   if (body) options.body = JSON.stringify(body);
 
   const res = await enhancedFetch(endpoint, options);
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 export async function apiPut(endpoint: string, body: unknown) {

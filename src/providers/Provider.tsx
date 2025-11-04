@@ -4,6 +4,7 @@ import TanstackQueryProvider from '../providers/TanstackQueryProvider';
 import { NuqsAdapter } from 'nuqs/adapters/react';
 import { AppContextProvider } from './AppContextProvider';
 import ToastProvider from './ToastProvider';
+import { ThemeProvider } from './ThemeProvider';
 
 type Props = {
   children: React.ReactNode;
@@ -14,7 +15,16 @@ const Provider = ({ children }: Props) => {
     <NuqsAdapter>
       <TanstackQueryProvider>
         <AppContextProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
+          </ToastProvider>
         </AppContextProvider>
       </TanstackQueryProvider>
     </NuqsAdapter>

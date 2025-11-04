@@ -24,10 +24,18 @@ export interface FetchInterceptor {
 
 export type ApiResponse<T = unknown> = ApiBaseResponse<T>;
 
+// export interface ApiBaseResponse<T> {
+//   success: boolean;
+//   message: string;
+//   data: T;
+// }
+
+// api/types.ts
 export interface ApiBaseResponse<T> {
-  success: boolean;
-  message: string;
+  statusCode: number;
   data: T;
+  message: string;
+  success: boolean;
 }
 
 export interface ApiPaginatedData<K> {
