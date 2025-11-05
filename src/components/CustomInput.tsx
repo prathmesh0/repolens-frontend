@@ -58,7 +58,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
 
         <div className="relative flex w-full items-center">
           {onStartIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary">
               {onStartIcon}
             </div>
           )}
@@ -70,7 +70,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
             className={cn(
               'w-full rounded-md border text-sm font-normal transition-all duration-200',
               'border-gray-300 bg-white text-gray-800 placeholder-gray-400',
-              'hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:hover:border-blue-400 dark:focus:border-blue-400 dark:focus:ring-blue-300',
+              'hover:primary focus:border-primary focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:hover:border-primary dark:focus:border-primary dark:focus:ring-primary',
               error && 'border-red-500 focus:ring-red-200',
               onStartIcon ? 'pl-10' : 'pl-3',
               onEndIcon || isPasswordType ? 'pr-10' : 'pr-3',
@@ -84,14 +84,14 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
               type="button"
               title="Toggle password visibility"
               onClick={togglePasswordVisibility}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary dark:text-gray-400 "
               tabIndex={-1}
             >
               <PasswordIcon size={18} />
             </button>
           ) : (
             onEndIcon && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
                 {onEndIcon}
               </div>
             )

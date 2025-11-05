@@ -7,12 +7,16 @@ import {
   Plus,
   Search,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Button } from './ui/button';
 
 import CustomInput from './CustomInput';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { User } from '@/api/services';
+import { RepoHistoryItem } from '@/types/repo';
+import { Skeleton } from './ui/skeleton';
 
 interface ISidebar {
   isOpen: boolean;
@@ -20,27 +24,32 @@ interface ISidebar {
 }
 
 function Sidebar({ isOpen, toggleSidebar }: ISidebar) {
-  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState('');
+  const {
+    data: repoHistoryResponse,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ['repoHistory', searchTerm],
+    queryFn: async () => {
+      const res = await User.getRepoHistory(searchTerm || '');
+      return res?.data || [];
+    },
+  });
 
-  const chatHistory = [
-    { id: 1, name: 'RepoLens Core API' },
-    { id: 2, name: 'Frontend Refactor' },
-    { id: 3, name: 'ML Integration' },
-    { id: 4, name: 'RepoLens Core API' },
-    { id: 5, name: 'Frontend Refactor' },
-    { id: 6, name: 'ML Integration' },
-    { id: 7, name: 'RepoLens Core API' },
-    // { id: 8, name: 'Frontend Refactor' },
-    // { id: 9, name: 'ML Integration' },
-    // { id: 10, name: 'RepoLens Core API' },
-    // { id: 11, name: 'Frontend Refactor' },
-    // { id: 12, name: 'ML Integration' },
-    // { id: 13, name: 'RepoLens Core API' },
-    // { id: 14, name: 'Frontend Refactor' },
-    // { id: 15, name: 'ML Integration' },
-  ];
+  const repoHistory: RepoHistoryItem[] = repoHistoryResponse || [];
+
+  // ✅ Handle search debounce
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      refetch();
+    }, 400); // debounce for 400ms
+    return () => clearTimeout(delay);
+  }, [searchTerm, refetch]);
 
   const handleNavClick = (id: string) => {
     if (id === 'new') {
@@ -50,6 +59,13 @@ function Sidebar({ isOpen, toggleSidebar }: ISidebar) {
     }
   };
 
+  const handleChatClick = (repo: RepoHistoryItem) => {
+    console.log('RepoId in Sidebar', repo.repoId);
+    setActiveChatId(repo.repoId);
+    router.push(`/chat/${repo.repoId}`);
+  };
+
+  console.log('RepoHistory', repoHistory);
   return (
     <aside
       className={cn(
@@ -116,6 +132,8 @@ function Sidebar({ isOpen, toggleSidebar }: ISidebar) {
                 placeholder="Search chats..."
                 onStartIcon={<Search size={16} />}
                 className="text-sm py-1.5"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           )}
@@ -123,28 +141,49 @@ function Sidebar({ isOpen, toggleSidebar }: ISidebar) {
 
         {/* Chat History */}
         <div className="mt-3">
-          {chatHistory.map((chat) => (
-            <div
-              key={chat.id}
-              onClick={() => setActiveChatId(chat.id)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors duration-200',
-                activeChatId === chat.id
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'text-muted-foreground hover:bg-muted'
-              )}
-              title={!isOpen ? chat.name : ''}
-            >
-              {isOpen ? (
-                <>
-                  <MessageSquare className="h-4 w-4" />
-                  <span>{chat.name}</span>
-                </>
-              ) : (
-                <MessageSquare className="h-4 w-4" />
-              )}
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2">
+                  <Skeleton className="h-4 w-4 rounded" />
+                  {isOpen && <Skeleton className="h-4 w-32" />}
+                </div>
+              ))}
             </div>
-          ))}
+          ) : isError ? (
+            <p className="text-center text-sm text-red-500 py-2">
+              ⚠️ Failed to load repo history.
+            </p>
+          ) : repoHistory.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-2">
+              No repositories found.
+            </p>
+          ) : (
+            repoHistory.map((repo) => (
+              <div
+                key={repo.repoId}
+                onClick={() => handleChatClick(repo)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors duration-200 h-9',
+                  activeChatId === repo.repoId
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-muted-foreground hover:bg-muted'
+                )}
+                title={repo.repoName}
+              >
+                {isOpen ? (
+                  <>
+                    <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate max-w-[150px] block">
+                      {repo.repoName}
+                    </span>
+                  </>
+                ) : (
+                  <MessageSquare className="h-4 w-4" />
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </aside>

@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from '@/lib/apiMethods';
 import { BODY, ENPOINTS } from '@/lib/Config';
+import { ApiBaseResponse } from '@/types/api';
 import { ILogin } from '@/types/auth';
 import {
   ChatAnalysisResponse,
@@ -10,7 +11,7 @@ import {
   IFullRepoInfo,
   IRepoChatData,
 } from '@/types/chat';
-import { IAnalyse, IRepositoryResponse } from '@/types/repo';
+import { IAnalyse, IRepositoryResponse, RepoHistoryItem } from '@/types/repo';
 
 export class User {
   public static async handleLogin(body: ILogin) {
@@ -22,6 +23,20 @@ export class User {
       return response;
     } catch (error) {
       console.log('ERROR: handleLogin', error);
+    }
+  }
+
+  public static async getRepoHistory(
+    query?: string
+  ): Promise<ApiBaseResponse<RepoHistoryItem[]> | undefined> {
+    try {
+      const response = await apiGet<ApiBaseResponse<RepoHistoryItem[]>>(
+        ENPOINTS.USERS.REPOHISTORY(query)
+      );
+      return response;
+    } catch (error) {
+      console.error('ERROR: getRepoHistory', error);
+      return undefined;
     }
   }
 }

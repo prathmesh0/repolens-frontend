@@ -33,3 +33,18 @@ export interface IRepositoryResponse {
   message: string;
   success: boolean;
 }
+
+
+export interface MessagePreview {
+  role: string;
+  content: string;
+}
+
+export interface RepoHistoryItem {
+  repoId: string;
+  repoName: string;
+  repoOwner: string;
+  messagePreview: MessagePreview | null;
+  chatId: string | null;
+  lastActive: string | null;
+}

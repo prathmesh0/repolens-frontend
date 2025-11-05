@@ -10,6 +10,10 @@ export const ENPOINTS = {
     REGISTER: `${API_BASE}/users/register`,
     LOGOUT: `${API_BASE}/users/logout`,
     REFRESH_TOKEN: `${API_BASE}/users/refresh-token`,
+    REPOHISTORY: (query?: string) =>
+      query
+        ? `${API_BASE}/users/repo-history?query=${encodeURIComponent(query)}`
+        : `${API_BASE}/users/repo-history`,
   },
 
   REPOSITORY: {
