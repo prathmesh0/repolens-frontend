@@ -29,36 +29,38 @@ function FileNode({ node, level = 0 }: { node: FileNodeType; level?: number }) {
   const isDir = node.type === 'dir';
 
   return (
-    <div style={{ marginLeft: level * 16 }}>
+    <div style={{ marginLeft: level * 12 }}>
       <div
         className={cn(
-          'flex items-center gap-1 pl-2 pr-4 py-1 rounded cursor-pointer',
+          'flex items-center gap-1 pl-1 sm:pl-2 pr-2 sm:pr-4 py-1 cursor-pointer',
           isDir ? 'hover:bg-muted/60' : 'text-muted-foreground'
         )}
         onClick={() => isDir && setOpen((v) => !v)}
       >
         {isDir ? (
           open ? (
-            <ChevronDownIcon />
+            <ChevronDownIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
           ) : (
-            <ChevronRightIcon />
+            <ChevronRightIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
           )
         ) : (
-          <FileIcon className="text-blue-500" />
+          <FileIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" />
         )}
         {isDir ? (
-          <FolderIcon className="text-yellow-600" />
+          <FolderIcon className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600 flex-shrink-0" />
         ) : (
-          <FileIcon className="text-blue-500" />
+          <FileIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" />
         )}
-        <span className={cn(isDir ? 'font-medium' : '')}>{node.name}</span>
+        <span className={cn(isDir ? 'font-medium' : '', 'truncate')}>
+          {node.name}
+        </span>
         {node.extension && !isDir && (
-          <span className="text-xs ml-2 text-muted-foreground">
+          <span className="text-xs ml-1 sm:ml-2 text-muted-foreground hidden sm:inline">
             {node.extension}
           </span>
         )}
         {!isDir && (
-          <span className="ml-auto text-xs text-muted-foreground">
+          <span className="ml-auto text-xs text-muted-foreground hidden md:inline flex-shrink-0">
             {node.size} bytes
           </span>
         )}
@@ -90,8 +92,10 @@ export default function FileTree({
   fileStructure: FileNodeType;
 }) {
   return (
-    <div className="bg-muted p-4 rounded-lg shadow-sm border">
-      <div className="font-semibold mb-2 text-lg">File Structure</div>
+    <div className="bg-mutedp-3 sm:p-4 shadow-sm ">
+      <div className="font-semibold mb-2 text-sm sm:text-base md:text-lg">
+        File Structure
+      </div>
       <FileNode node={fileStructure} />
     </div>
   );

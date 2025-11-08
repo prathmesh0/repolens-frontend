@@ -36,7 +36,7 @@ export default function LoginPage() {
       </div>
 
       {/* Login Card */}
-      <Card className="w-full max-w-md bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg">
+      <Card className="w-full max-w-md bg-white/10  py-4 backdrop-blur-md text-white border border-white/20 shadow-lg">
         <CardHeader className="flex flex-col items-center gap-3">
           {/* Logo */}
           {/* <div className="w-14 h-14 relative">
@@ -107,13 +107,15 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <CustomButton
-                  type="submit"
-                  disabled={!(isValid && dirty)}
-                  className="w-full"
-                >
-                  Register
-                </CustomButton>
+                <div className="pt-3">
+                  <CustomButton
+                    type="submit"
+                    disabled={!(isValid && dirty)}
+                    className="w-full"
+                  >
+                    Register
+                  </CustomButton>
+                </div>
 
                 {/* Register link */}
                 <p className="text-center text-sm text-gray-300">

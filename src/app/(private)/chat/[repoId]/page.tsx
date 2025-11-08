@@ -16,10 +16,10 @@ import {
   IFullRepoInfo,
   IRepoChatMessage,
 } from '@/types/chat';
-import CustomLoader from '@/components/CustomLoader';
 import { parseJSONSafe } from '@/lib/utils';
 import RepoBasicInfoCard from '@/components/RepoInfoBasicCard';
 import RepoAIAnalysisCard from '@/components/RepoAiAnalysisCard';
+import { ChatPageSkeleton } from '@/components/ChatPageSkelaton';
 
 type ChatMessageType = {
   sender: 'user' | 'assistant';
@@ -171,11 +171,7 @@ export default function ChatPage() {
   }, [isRepoSuccess, repoInfo]);
 
   if (isRepoLoading || isHistoryLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <CustomLoader className="h-12 w-12" />
-      </div>
-    );
+    return <ChatPageSkeleton />;
   }
 
   if (isHistoryError) {
@@ -328,7 +324,7 @@ export default function ChatPage() {
     <main className="flex flex-col h-full bg-background text-foreground ">
       {/* Chat Section */}
       <div
-        className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-4 scroll-smooth"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 md:p-6 space-y-3 sm:space-y-4 scroll-smooth"
         style={{
           scrollbarWidth: 'thin',
           scrollbarColor: 'var(--muted) transparent',

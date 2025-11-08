@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { Button } from './ui/button';
 
 import CustomInput from './CustomInput';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { User } from '@/api/services';
 import { RepoHistoryItem } from '@/types/repo';
@@ -20,14 +20,27 @@ import { Skeleton } from './ui/skeleton';
 
 interface ISidebar {
   isOpen: boolean;
+  isMobile: boolean;
   toggleSidebar: () => void;
 }
 
-function Sidebar({ isOpen, toggleSidebar }: ISidebar) {
+function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const pathname = usePathname();
+
+  // Update activeChatId based on current path
+  useEffect(() => {
+    const match = pathname.match(/^\/chat\/([^\/]+)$/);
+    if (match) {
+      setActiveChatId(match[1]);
+    } else {
+      setActiveChatId(null); // clear highlight when not on chat route
+    }
+  }, [pathname]);
+
   const {
     data: repoHistoryResponse,
     isLoading,
@@ -55,26 +68,35 @@ function Sidebar({ isOpen, toggleSidebar }: ISidebar) {
     if (id === 'new') {
       router.push('/home');
     } else if (id === 'search') {
-      setShowSearch((prev) => !prev);
+      if (!isOpen) {
+        toggleSidebar(); // open sidebar first
+        setShowSearch(true); // show search input
+      } else {
+        setShowSearch((prev) => !prev); // toggle search input
+      }
     }
   };
 
   const handleChatClick = (repo: RepoHistoryItem) => {
     console.log('RepoId in Sidebar', repo.repoId);
     setActiveChatId(repo.repoId);
+    if (isMobile) {
+      toggleSidebar();
+    }
     router.push(`/chat/${repo.repoId}`);
   };
 
-  console.log('RepoHistory', repoHistory);
   return (
     <aside
       className={cn(
-        `fixed md:relative h-full bg-card border-r border-border transition-all duration-300 flex flex-col`,
-        isOpen ? 'w-64' : 'w-16'
+        `${isMobile} ? 'fixed' : 'relative'`,
+        ' h-full bg-card border-r border-border transition-all duration-300 flex flex-col',
+        isOpen ? 'w-64' : isMobile ? 'w-0' : 'w-16',
+        !isOpen && isMobile ? 'invisible' : 'visible'
       )}
     >
       {/* Top section */}
-      <div className="flex items-center justify-between px-2 h-[60.5px] border-b border-border bg-card sticky top-0 z-10">
+      <div className="flex items-center justify-between px-2 h-[60.5px] border-b border-border bg-card sticky top-0 z-10 min-w-0">
         {isOpen ? (
           <Image
             src={Assets.LogoImg}
@@ -85,21 +107,29 @@ function Sidebar({ isOpen, toggleSidebar }: ISidebar) {
           />
         ) : null}
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleSidebar}
-          className="hover:bg-muted"
-        >
-          {isOpen ? (
-            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          )}
-        </Button>
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="hover:bg-muted min-w-[40px] flex justify-center"
+          >
+            {isOpen ? (
+              <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            )}
+          </Button>
+        )}
       </div>
+
       {/* Navigation + Chat History */}
-      <div className="p-3 flex-1 overflow-y-auto space-y-2">
+      <div
+        className={cn(
+          'p-3 flex-1 overflow-y-auto space-y-2 custom-scrollbar',
+          !isOpen ? 'overflow-hidden' : ''
+        )}
+      >
         {/* Navigation options */}
         <div className="space-y-1">
           {/* Nav Items */}

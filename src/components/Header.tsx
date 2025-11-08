@@ -1,6 +1,6 @@
 'use client';
 
-import { UserCircle, LogOut } from 'lucide-react';
+import { UserCircle, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,7 +15,13 @@ import { ThemeToggle } from './ThemeToggle';
 
 import { useEffect, useState } from 'react';
 import { useAppContext } from '@/providers/AppContextProvider';
-export default function Header() {
+
+interface IHeaderProps {
+  toggleSidebar: () => void;
+  isMobile: boolean;
+}
+
+export default function Header({ toggleSidebar, isMobile }: IHeaderProps) {
   const { handleLogout } = useAppContext();
   const [user, setUser] = useState<{ username: string; email: string } | null>(
     null
@@ -33,16 +39,27 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/60 backdrop-blur-md shadow-sm">
+    <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/60 backdrop-blur-md shadow-sm sticky top-0 z-10">
       {/* Left side: Name + Sidebar toggle */}
-      <div>
-        <h2 className="font-semibold text-xl tracking-wide text-primary hover:text-primary/80 transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="h-9 w-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex-shrink-0"
+          >
+            <Menu className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+          </Button>
+        )}
+
+        <h2 className="font-semibold  text:lg md:text-xl tracking-wide text-primary hover:text-primary/80 transition-colors">
           Repolens
         </h2>
       </div>
 
       {/* Right side: Theme toggle + Profile */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 md:gap-3 flex-shrink-0">
         <ThemeToggle />
 
         <DropdownMenu>

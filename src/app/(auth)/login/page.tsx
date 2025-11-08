@@ -36,8 +36,8 @@ export default function LoginPage() {
       </div>
 
       {/* Login Card */}
-      <Card className="w-full max-w-md bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg">
-        <CardHeader className="flex flex-col items-center gap-3">
+      <Card className="w-full max-w-md py-3 bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg">
+        <CardHeader className="flex flex-col items-center gap-3 ">
           {/* Logo */}
           {/* <div className="w-14 h-14 relative">
             <Image
@@ -105,14 +105,14 @@ export default function LoginPage() {
                   />
 
                   {/* Forgot password link */}
-                  <div className="flex justify-end">
+                  {/* <div className="flex justify-end">
                     <Link
                       href="/forgot-password"
                       className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
                     >
                       Forgot password?
                     </Link>
-                  </div>
+                  </div> */}
                 </div>
 
                 <CustomButton
