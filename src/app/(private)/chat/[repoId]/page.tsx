@@ -23,6 +23,7 @@ import { ChatPageSkeleton } from '@/components/ChatPageSkelaton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AIResponseFormatter } from '@/components/AIResponseFormatter';
 import { LoadingMessage } from '@/components/LoadingMessage';
+import { Toast } from '@/lib/Toast';
 
 type ChatMessageType = {
   sender: 'user' | 'assistant';
@@ -234,14 +235,29 @@ export default function ChatPage() {
       // Remove loading message
       setMessages((prev) => prev.filter((m) => !m.isLoading));
 
-      // 3️ Handle successful response
+      // Handle "No embeddings found for repo" special case
+      if (res?.success === false && res?.data === null) {
+        Toast.info(
+          'The requested operation is still running in the background. Please wait a moment and try again.'
+        );
+        // Optionally you can add a friendly assistant message as well (not raw error)
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'assistant',
+            message:
+              'The requested operation is still running in the background. Please wait a moment and try again.',
+          },
+        ]);
+        return;
+      }
+
+      // Handle successful response
       if (res?.success && res?.data?.answer) {
-        const { answer, sources } = res.data;
+        const { answer } = res.data;
 
         // assistant message with formatted visual output
-        const assistantMessage = (
-          <AIResponseFormatter answer={answer} sources={sources} />
-        );
+        const assistantMessage = <AIResponseFormatter answer={answer} />;
 
         setMessages((prev) => [
           ...prev,
@@ -255,7 +271,7 @@ export default function ChatPage() {
             sender: 'assistant',
             message:
               res?.message ||
-              '🤖 AI could not generate a response right now. Please try again later.',
+              'AI could not generate a response right now. Please try again later.',
           },
         ]);
       }
@@ -266,7 +282,7 @@ export default function ChatPage() {
         ...prev,
         {
           sender: 'assistant',
-          message: '⚠️ Something went wrong while contacting AI service.',
+          message: 'Something went wrong while contacting AI service.',
         },
       ]);
     }
@@ -307,6 +323,53 @@ export default function ChatPage() {
         return;
       }
 
+      if (
+        info === 'aiAnalysis' &&
+        isAIAnalysisResponse(res) &&
+        (res.data.status === 'processing' || res.data.aiAnalysis === null)
+      ) {
+        Toast.info(
+          'Background processing is ongoing. Sorry for the delay, please try again after some time.'
+        );
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'assistant',
+            message: (
+              <div className="p-3 sm:p-4 text-xs sm:text-sm text-muted-foreground">
+                ⏳ AI analysis is still running. Please wait a bit and try
+                again. later.
+              </div>
+            ),
+          },
+        ]);
+        return;
+      }
+
+      // Handle processing state for File Structure
+      if (info === 'fileStructure' && isFileStructureRepoInfo(res)) {
+        if (!res.data.fileStructure) {
+          Toast.info(
+            'File structure is still being processed. Please try again after some time.'
+          );
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'assistant',
+              message: (
+                <div className="p-3 sm:p-4 text-xs sm:text-sm text-muted-foreground">
+                  ⏳ File structure extraction is still running. Please wait a
+                  bit and try again!
+                </div>
+              ),
+            },
+          ]);
+          return;
+        }
+      }
+
       // Format assistant response nicely
       let assistantMessage: JSX.Element | string = '';
 
@@ -315,16 +378,7 @@ export default function ChatPage() {
         assistantMessage = <RepoBasicInfoCard repoInfo={repo} showHeader />;
       } else if (isFileStructureRepoInfo(res)) {
         assistantMessage = <FileTree fileStructure={res.data.fileStructure} />;
-      }
-      // } else if (info === 'fileStructure' && (res as IFileStructureRepoInfo).) {
-      //   assistantMessage = (
-      //     <div className="p-3 rounded-lg border bg-muted/60 text-muted-foreground">
-      //       ⏳ File structure extraction is still running. Please wait a bit and
-      //       try again!
-      //     </div>
-      //   );
-      // }
-      else if (isAIAnalysisResponse(res)) {
+      } else if (isAIAnalysisResponse(res)) {
         const { aiAnalysis, status } = res.data;
 
         assistantMessage = (
@@ -346,7 +400,10 @@ export default function ChatPage() {
           </div>
         );
       } else {
-        assistantMessage = '✅ Request processed.';
+        Toast.info(
+          'Processing is underway. We appreciate your patience — please try again shortly.'
+        );
+        assistantMessage = 'Please wait a bit and try again!';
       }
 
       setMessages((prev) => [
@@ -358,7 +415,7 @@ export default function ChatPage() {
       setMessages((prev) => prev.filter((m) => !m.isLoading));
       setMessages((prev) => [
         ...prev,
-        { sender: 'assistant', message: '⚠️ Failed to fetch repository data.' },
+        { sender: 'assistant', message: 'Failed to fetch repository data.' },
       ]);
       console.log(error);
     }

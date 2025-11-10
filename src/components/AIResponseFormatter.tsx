@@ -8,12 +8,10 @@ import { useTheme } from 'next-themes';
 
 interface AIResponseFormatterProps {
   answer: string;
-  sources?: string[];
 }
 
 export const AIResponseFormatter: React.FC<AIResponseFormatterProps> = ({
   answer,
-  sources,
 }) => {
   const { theme } = useTheme();
 
@@ -165,7 +163,7 @@ export const AIResponseFormatter: React.FC<AIResponseFormatterProps> = ({
         {parseContent(answer)}
       </div>
 
-      {sources && sources.length > 0 && (
+      {/* {sources && sources.length > 0 && (
         <div className="pt-3 border-t border-border">
           <p className="font-medium text-foreground mb-2 flex items-center gap-2">
             <span>📚</span> Sources:
@@ -178,7 +176,7 @@ export const AIResponseFormatter: React.FC<AIResponseFormatterProps> = ({
             ))}
           </ul>
         </div>
-      )}
+      )} */}
     </div>
   );
 };
