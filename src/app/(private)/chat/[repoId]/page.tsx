@@ -21,43 +21,14 @@ import RepoBasicInfoCard from '@/components/RepoInfoBasicCard';
 import RepoAIAnalysisCard from '@/components/RepoAiAnalysisCard';
 import { ChatPageSkeleton } from '@/components/ChatPageSkelaton';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AIResponseFormatter } from '@/components/AIResponseFormatter';
+import { LoadingMessage } from '@/components/LoadingMessage';
 
 type ChatMessageType = {
   sender: 'user' | 'assistant';
   message: string | JSX.Element;
   isLoading?: boolean;
 };
-
-const LoadingMessage = ({ text = 'AI is thinking' }: { text?: string }) => (
-  <div className="p-2 rounded-xl border border-border bg-muted/30 shadow-sm">
-    <div className="flex items-center gap-3">
-      <div className="flex gap-1">
-        <motion.div
-          className="w-2 h-2 bg-primary rounded-full"
-          animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
-          transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-        />
-        <motion.div
-          className="w-2 h-2 bg-primary rounded-full"
-          animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
-          transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-        />
-        <motion.div
-          className="w-2 h-2 bg-primary rounded-full"
-          animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
-          transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-        />
-      </div>
-      <motion.span
-        className="text-sm text-muted-foreground"
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        {text}
-      </motion.span>
-    </div>
-  </div>
-);
 
 function isBasicRepoInfo(data: unknown): data is IBasicRepoInfo {
   if (typeof data !== 'object' || data === null) return false;
@@ -152,13 +123,17 @@ export default function ChatPage() {
                 return {
                   sender: 'assistant',
                   message: (
-                    <RepoAIAnalysisCard
-                      aiAnalysis={parsed.aiAnalysis}
-                      showHeader
-                    />
+                    <RepoAIAnalysisCard aiAnalysis={parsed.aiAnalysis} />
                   ),
                 };
               }
+            }
+
+            if (msg.role === 'assistant') {
+              return {
+                sender: 'assistant',
+                message: <AIResponseFormatter answer={msg.content} />,
+              };
             }
 
             // Default (for user or plain text messages)
@@ -265,23 +240,7 @@ export default function ChatPage() {
 
         // assistant message with formatted visual output
         const assistantMessage = (
-          <div className="p-3 space-y-3">
-            <h3 className="text-lg font-semibold text-primary">
-              🤖 AI Response
-            </h3>
-            <p className="text-sm leading-relaxed">{answer}</p>
-
-            {sources?.length > 0 && (
-              <div className="pt-2">
-                <p className="font-medium text-foreground mb-1">📚 Sources:</p>
-                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                  {sources.map((src: string, i: number) => (
-                    <li key={i}>{src}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          <AIResponseFormatter answer={answer} sources={sources} />
         );
 
         setMessages((prev) => [
