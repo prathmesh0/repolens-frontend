@@ -111,24 +111,18 @@ export const AIResponseFormatter: React.FC<AIResponseFormatterProps> = ({
           key={`code-${match.index}`}
           className="my-2 rounded-lg overflow-hidden border border-border"
         >
-          <div
-            className={`px-4 py-2 text-xs font-mono border-b flex items-center justify-between ${
-              isDark
-                ? 'bg-zinc-800 text-zinc-300 border-zinc-700'
-                : 'bg-zinc-100 text-zinc-700 border-zinc-300'
-            }`}
-          >
+          <div className="px-4 py-2 text-xs font-mono border-b flex items-center justify-between bg-zinc-800 text-zinc-300 border-zinc-700">
             <span className="font-semibold">{language}</span>
           </div>
           <SyntaxHighlighter
             language={language}
-            style={isDark ? vscDarkPlus : prism}
+            style={vscDarkPlus} // always dark theme
             customStyle={{
               margin: 0,
               padding: '1rem',
               fontSize: '0.875rem',
               lineHeight: '1.5',
-              background: isDark ? '#1e1e1e' : '#fafafa',
+              background: '#1e1e1e', // force dark background
             }}
             showLineNumbers
           >
