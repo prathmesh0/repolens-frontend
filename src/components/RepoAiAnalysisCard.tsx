@@ -18,14 +18,14 @@ export default function RepoAIAnalysisCard({
   // ⏳ If analysis not ready
   if (status !== 'ready') {
     return (
-      <div className="p-3 sm:p-4 rounded-lg border text-xs sm:text-sm bg-muted/60 text-muted-foreground">
+      <div className="p-3 sm:p-4  text-xs sm:text-sm text-muted-foreground">
         ⏳ AI analysis is still running. Please wait.
       </div>
     );
   }
 
   return (
-    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border bg-muted/30 shadow-sm space-y-3">
+    <div className="p-3 sm:p-4 space-y-3">
       {showHeader && (
         <h3 className="text-base sm:text-lg font-semibold text-primary">
           🤖 AI Analysis Summary

@@ -1,6 +1,6 @@
 'use client';
 
-import { JSX, useEffect, useState } from 'react';
+import { JSX, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ChatService, Repository } from '@/api/services';
@@ -20,11 +20,44 @@ import { parseJSONSafe } from '@/lib/utils';
 import RepoBasicInfoCard from '@/components/RepoInfoBasicCard';
 import RepoAIAnalysisCard from '@/components/RepoAiAnalysisCard';
 import { ChatPageSkeleton } from '@/components/ChatPageSkelaton';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type ChatMessageType = {
   sender: 'user' | 'assistant';
   message: string | JSX.Element;
+  isLoading?: boolean;
 };
+
+const LoadingMessage = ({ text = 'AI is thinking' }: { text?: string }) => (
+  <div className="p-2 rounded-xl border border-border bg-muted/30 shadow-sm">
+    <div className="flex items-center gap-3">
+      <div className="flex gap-1">
+        <motion.div
+          className="w-2 h-2 bg-primary rounded-full"
+          animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
+          transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+        />
+        <motion.div
+          className="w-2 h-2 bg-primary rounded-full"
+          animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
+          transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+        />
+        <motion.div
+          className="w-2 h-2 bg-primary rounded-full"
+          animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
+          transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+        />
+      </div>
+      <motion.span
+        className="text-sm text-muted-foreground"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        {text}
+      </motion.span>
+    </div>
+  </div>
+);
 
 function isBasicRepoInfo(data: unknown): data is IBasicRepoInfo {
   if (typeof data !== 'object' || data === null) return false;
@@ -62,6 +95,21 @@ function isFullRepoInfo(data: unknown): data is { data: IFullRepoInfo } {
 export default function ChatPage() {
   const { repoId } = useParams<{ repoId: string }>();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const {
+    data: chatHistory,
+    isLoading: isHistoryLoading,
+    isSuccess: isHistorySuccess,
+    isError: isHistoryError,
+  } = useQuery({
+    queryKey: ['chatHistory', repoId],
+    queryFn: async () => {
+      const res = await ChatService.chatHistory(repoId); // implement this in your service
+      return res?.data?.messages;
+    },
+    enabled: !!repoId, // fetch only when repoId exists
+  });
 
   // ✅ Fetch repo info via React Query
   const {
@@ -76,20 +124,6 @@ export default function ChatPage() {
       return res;
     },
     enabled: false,
-  });
-
-  const {
-    data: chatHistory,
-    isLoading: isHistoryLoading,
-    isSuccess: isHistorySuccess,
-    isError: isHistoryError,
-  } = useQuery({
-    queryKey: ['chatHistory', repoId],
-    queryFn: async () => {
-      const res = await ChatService.chatHistory(repoId); // implement this in your service
-      return res?.data?.messages;
-    },
-    enabled: !!repoId, // fetch only when repoId exists
   });
 
   // ✅ Load chat history on mount
@@ -143,20 +177,29 @@ export default function ChatPage() {
     }
   }, [isHistorySuccess, chatHistory, refetchRepoInfo]);
 
-  const repoInfo = isFullRepoInfo(repoInfoResponse)
-    ? repoInfoResponse.data.basicInfo
-    : undefined;
-
-  console.log('InitialRepoInfo', repoInfo);
-
-  // when repoInfo is fetched, add as assistant message
+  // Scroll to bottom when messages update (with smooth animation)
   useEffect(() => {
-    if (isRepoSuccess && repoInfo) {
-      const repoMessage = (
-        <RepoBasicInfoCard repoInfo={repoInfo} showHeader={false} />
-      );
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
-      // prevent duplicate push if data refetches
+  // Show repo info as first message only when there is no chat history AND fetched successfully
+  useEffect(() => {
+    let repoInfo: IBasicRepoInfo['data']['basicInfo'] | undefined = undefined;
+
+    if (isBasicRepoInfo(repoInfoResponse)) {
+      repoInfo = repoInfoResponse.data.basicInfo;
+    } else if (isFullRepoInfo(repoInfoResponse)) {
+      repoInfo = repoInfoResponse.data.basicInfo;
+    }
+
+    if (
+      isRepoSuccess &&
+      repoInfo &&
+      (messages.length === 0 ||
+        messages.every((msg) => msg.sender !== 'assistant'))
+    ) {
       setMessages((prev) => {
         const alreadyAdded = prev.some(
           (m) =>
@@ -165,10 +208,18 @@ export default function ChatPage() {
               ?.children === repoInfo.name
         );
         if (alreadyAdded) return prev;
-        return [...prev, { sender: 'assistant', message: repoMessage }];
+        return [
+          ...prev,
+          {
+            sender: 'assistant',
+            message: (
+              <RepoBasicInfoCard repoInfo={repoInfo} showHeader={false} />
+            ),
+          },
+        ];
       });
     }
-  }, [isRepoSuccess, repoInfo]);
+  }, [isRepoSuccess, repoInfoResponse, messages]);
 
   if (isRepoLoading || isHistoryLoading) {
     return <ChatPageSkeleton />;
@@ -189,20 +240,32 @@ export default function ChatPage() {
   };
 
   const handleSend = async (msg: IChatRequest) => {
-    // 1️⃣ Add user's message to chat
+    // Add user's message to chat
     setMessages((prev) => [...prev, { sender: 'user', message: msg.question }]);
+    //  Add loading message
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'assistant',
+        message: <LoadingMessage text="AI is generating response" />,
+        isLoading: true,
+      },
+    ]);
 
     try {
-      // 2️⃣ Call backend API for chat response
+      // Call backend API for chat response
       const res = await ChatService.chatwithRepoRequest(repoId, msg);
 
-      // 3️⃣ Handle successful response
+      // Remove loading message
+      setMessages((prev) => prev.filter((m) => !m.isLoading));
+
+      // 3️ Handle successful response
       if (res?.success && res?.data?.answer) {
         const { answer, sources } = res.data;
 
         // assistant message with formatted visual output
         const assistantMessage = (
-          <div className="p-4 rounded-2xl border border-border bg-muted/30 shadow-sm space-y-3">
+          <div className="p-3 space-y-3">
             <h3 className="text-lg font-semibold text-primary">
               🤖 AI Response
             </h3>
@@ -239,6 +302,7 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('ERROR: chatwithRepoRequest', error);
+      setMessages((prev) => prev.filter((m) => !m.isLoading));
       setMessages((prev) => [
         ...prev,
         {
@@ -250,13 +314,32 @@ export default function ChatPage() {
   };
 
   const handleAction = async (action: string) => {
-    // 1️⃣ Add user's message
+    // Add user's message
     setMessages((prev) => [...prev, { sender: 'user', message: action }]);
+
+    // Add loading message with context-specific text
+    const loadingText = action.includes('File Structure')
+      ? 'Fetching file structure'
+      : action.includes('AI Analysis')
+      ? 'Running AI analysis'
+      : 'Processing request';
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'assistant',
+        message: <LoadingMessage text={loadingText} />,
+        isLoading: true,
+      },
+    ]);
 
     const info = actionMap[action];
     try {
-      // 2️⃣ Fetch data from API
+      // Fetch data from API
       const res = await Repository.getRepoInfo(repoId, info);
+      // Remove loading message
+      setMessages((prev) => prev.filter((m) => !m.isLoading));
+
       if (!res) {
         setMessages((prev) => [
           ...prev,
@@ -265,7 +348,7 @@ export default function ChatPage() {
         return;
       }
 
-      // 3️⃣ Format assistant response nicely
+      // Format assistant response nicely
       let assistantMessage: JSX.Element | string = '';
 
       if (isBasicRepoInfo(res)) {
@@ -312,6 +395,8 @@ export default function ChatPage() {
         { sender: 'assistant', message: assistantMessage },
       ]);
     } catch (error) {
+      // Remove loading message on error
+      setMessages((prev) => prev.filter((m) => !m.isLoading));
       setMessages((prev) => [
         ...prev,
         { sender: 'assistant', message: '⚠️ Failed to fetch repository data.' },
@@ -330,13 +415,21 @@ export default function ChatPage() {
           scrollbarColor: 'var(--muted) transparent',
         }}
       >
-        {messages.map((m, i) => (
-          <ChatMessage
-            key={i}
-            sender={m.sender as 'user' | 'assistant'}
-            message={m.message}
-          />
-        ))}
+        <AnimatePresence initial={false}>
+          {messages.map((m, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChatMessage sender={m.sender} message={m.message} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Chat Actions + Input */}

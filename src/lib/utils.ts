@@ -33,3 +33,8 @@ export function parseJSONSafe(content: string) {
     return null;
   }
 }
+
+export function capitalizeFirstLetter(str?: string) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}

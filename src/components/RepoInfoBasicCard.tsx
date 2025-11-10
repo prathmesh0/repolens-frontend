@@ -15,7 +15,7 @@ export default function RepoBasicInfoCard({
   if (!repoInfo) return null;
 
   return (
-    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border-border bg-muted/30 shadow-sm space-y-2 sm:space-y-3">
+    <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
       {showHeader && (
         <h3 className="text-base sm:text-lg font-semibold text-primary">
           📦 Basic Repository Information

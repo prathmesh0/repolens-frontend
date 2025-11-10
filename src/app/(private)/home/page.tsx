@@ -14,6 +14,9 @@ import { IAnalyse } from '@/types/repo';
 import CustomInput from '@/components/CustomInput';
 import CustomButton from '@/components/CustomButton';
 import { PageSkeleton } from '@/components/HomePageSkelaton';
+import Particles from '@/components/Particles';
+import { capitalizeFirstLetter } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 export default function HomePage() {
   const [user, setUser] = useState<{ username: string; email: string } | null>(
     null
@@ -21,6 +24,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [pageLoading, setPageLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -38,6 +43,25 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Detect Theme
+  useEffect(() => {
+    const detectTheme = () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(isDark ? 'dark' : 'light');
+    };
+
+    detectTheme();
+
+    // Watch for theme changes
+    const observer = new MutationObserver(detectTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   const formik = useFormik<IAnalyse>({
     initialValues: BODY.REPOSITORY.ANALYSE(),
     validationSchema: Y.repoAnalyseSchema,
@@ -51,7 +75,7 @@ export default function HomePage() {
           `Analysis started! This might take a few minutes to complete.`,
           { duration: 5000 }
         );
-
+        queryClient.invalidateQueries({ queryKey: ['repoHistory'] });
         // Navigate to chat page after short delay
         router.push(`/chat/${repoInfo._id}`);
       } else {
@@ -64,9 +88,25 @@ export default function HomePage() {
     return <PageSkeleton />;
   }
 
+  const particleColors =
+    theme === 'dark' ? ['#ffffff'] : ['#e6b347', '#4a9fd8', '#666666'];
+
   return (
-    <>
-      <main className="min-h-full w-full flex flex-col items-center justify-between bg-background text-foreground overflow-x-hidden hide-scrollbar">
+    <div className="relative min-h-full w-full">
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <Particles
+          particleColors={particleColors}
+          particleCount={200}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={150}
+          moveParticlesOnHover={true}
+          alphaParticles={false}
+          disableRotation={false}
+          className="w-full h-full"
+        />
+      </div>
+      <main className="relative z-10 min-h-full w-full flex flex-col items-center justify-between text-foreground overflow-x-hidden hide-scrollbar">
         {/* Hero Section */}
         <section className="flex flex-col items-center text-center mt-12 sm:mt-16 md:mt-20 mb-8 sm:mb-10 px-4 space-y-4 sm:space-y-6 max-w-4xl w-full">
           <motion.h1
@@ -75,7 +115,8 @@ export default function HomePage() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight bg-gradient-to-r from-[oklch(0.6716_0.1368_48.513)] to-[oklch(0.536_0.0398_196.028)] text-transparent bg-clip-text leading-tight"
           >
-            Welcome{user ? `, ${user.username}` : ''} to Repolens
+            Welcome{user ? `, ${capitalizeFirstLetter(user.username)}` : ''} to
+            Repolens
           </motion.h1>
 
           <motion.p
@@ -184,6 +225,6 @@ export default function HomePage() {
           rights reserved.
         </footer>
       </main>
-    </>
+    </div>
   );
 }

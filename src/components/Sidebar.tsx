@@ -1,4 +1,3 @@
-import { Assets } from '@/lib/Assets';
 import { cn } from '@/lib/utils';
 import {
   ChevronLeft,
@@ -8,7 +7,6 @@ import {
   Search,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { Button } from './ui/button';
 
 import CustomInput from './CustomInput';
@@ -17,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { User } from '@/api/services';
 import { RepoHistoryItem } from '@/types/repo';
 import { Skeleton } from './ui/skeleton';
+import Image from 'next/image';
 
 interface ISidebar {
   isOpen: boolean;
@@ -98,13 +97,17 @@ function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
       {/* Top section */}
       <div className="flex items-center justify-between px-2 h-[60.5px] border-b border-border bg-card sticky top-0 z-10 min-w-0">
         {isOpen ? (
-          <Image
-            src={Assets.LogoImg}
-            alt="Repolens Logo"
-            width={32}
-            height={32}
-            className="rounded"
-          />
+          <div
+            className="flex items-center justify-center w-10 h-10 rounded-md bg-muted p-1"
+            title="Repolens"
+          >
+            <Image
+              src="/favicon.ico" // serve the favicon from your public folder root
+              alt="Repolens Favicon"
+              width={32}
+              height={32}
+            />
+          </div>
         ) : null}
 
         {!isMobile && (
@@ -186,7 +189,7 @@ function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
             </p>
           ) : repoHistory.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-2">
-              No repositories found.
+              {isOpen ? 'No repositories found.' : 'No repos'}
             </p>
           ) : (
             repoHistory.map((repo) => (

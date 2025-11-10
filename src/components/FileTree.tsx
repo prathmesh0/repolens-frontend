@@ -92,9 +92,9 @@ export default function FileTree({
   fileStructure: FileNodeType;
 }) {
   return (
-    <div className="bg-mutedp-3 sm:p-4 shadow-sm ">
+    <div className="p-3 sm:p-4">
       <div className="font-semibold mb-2 text-sm sm:text-base md:text-lg">
-        File Structure
+        📂 File Structure
       </div>
       <FileNode node={fileStructure} />
     </div>
