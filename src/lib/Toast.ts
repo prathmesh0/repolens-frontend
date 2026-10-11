@@ -8,7 +8,8 @@ export class Toast {
   ) {
     toast(message, {
       style: {
-        borderRadius: 0,
+        borderRadius: 10,
+        overflow: 'hidden',
         border: 0,
         backgroundColor: '#f8f9fa',
         color: '#212529',
@@ -25,7 +26,8 @@ export class Toast {
   ) {
     toast.success(message, {
       style: {
-        borderRadius: 0,
+        borderRadius: 10,
+        overflow: 'hidden',
         border: 0,
         backgroundColor: '#5AD4B2',
         color: '#ffffff',
@@ -41,7 +43,8 @@ export class Toast {
   ) {
     toast.warning(message, {
       style: {
-        borderRadius: 0,
+        borderRadius: 10,
+        overflow: 'hidden',
         border: 0,
         backgroundColor: '#FF5653',
         color: '#ffffff',
@@ -54,7 +57,8 @@ export class Toast {
   public static error(message: string | React.ReactNode, data?: ExternalToast) {
     toast.error(message, {
       style: {
-        borderRadius: 0,
+        borderRadius: 10,
+        overflow: 'hidden',
         border: 0,
         backgroundColor: '#FF6952',
         color: '#ffffff',
@@ -68,7 +72,8 @@ export class Toast {
   public static info(message: string | React.ReactNode, data?: ExternalToast) {
     toast.info(message, {
       style: {
-        borderRadius: 0,
+        borderRadius: 10,
+        overflow: 'hidden',
         border: 0,
         backgroundColor: '#E7C551',
         color: '#ffffff',
@@ -84,7 +89,8 @@ export class Toast {
   ) {
     toast.loading(message, {
       style: {
-        borderRadius: 0,
+        borderRadius: 10,
+        overflow: 'hidden',
         border: 0,
         backgroundColor: '#704FE5',
         color: '#ffffff',

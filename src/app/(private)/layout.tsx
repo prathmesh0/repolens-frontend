@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
@@ -20,8 +21,14 @@ export default function AuthenticatedLayout({
   // Anything but a transient failure (network, 5xx) means "not logged in"
   const transient = error instanceof ApiError && error.status >= 500;
   const loggedOut = isError && !transient;
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+  // Start in the right state for the viewport so mobile does not flash an open
+  // sidebar. This layout only renders after /users/me resolves on the client.
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768
+  );
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 768
+  );
 
   useEffect(() => {
     function handleResize() {
@@ -40,9 +47,9 @@ export default function AuthenticatedLayout({
 
   if (isPending || loggedOut) {
     return (
-      <div className="flex h-screen w-full bg-background">
-        <Skeleton className="h-full w-64 hidden md:block rounded-none" />
-        <div className="flex-1 p-6 space-y-4">
+      <div className="flex h-dvh w-full bg-background">
+        <Skeleton className="hidden h-full w-[272px] rounded-none md:block" />
+        <div className="flex-1 space-y-4 p-6">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
@@ -52,7 +59,7 @@ export default function AuthenticatedLayout({
 
   if (isError) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-3 bg-background text-foreground">
+      <div className="flex h-dvh w-full flex-col items-center justify-center gap-3 bg-background text-foreground">
         <p className="text-sm text-muted-foreground">
           Could not reach the server.
         </p>
@@ -62,14 +69,21 @@ export default function AuthenticatedLayout({
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      {/* Mobile Overlay */}
-      {isMobile && sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {isMobile && sidebarOpen && (
+          <motion.div
+            key="overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar */}
       <Sidebar
@@ -89,10 +103,10 @@ export default function AuthenticatedLayout({
         {/* Page Content */}
         <main
           className={cn(
-            'flex-1 overflow-y-auto overflow-x-hidden px-4 hide-scrollbar'
+            'flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar'
           )}
         >
-          <div className="h-full max-w-7xl mx-auto">{children}</div>
+          <div className="mx-auto h-full max-w-7xl">{children}</div>
         </main>
       </div>
     </div>

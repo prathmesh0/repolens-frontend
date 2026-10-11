@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
 
@@ -12,29 +12,34 @@ interface ChatMessageProps {
 export default function ChatMessage({ message, sender }: ChatMessageProps) {
   const isUser = sender === 'user';
 
+  if (isUser) {
+    return (
+      <div className="flex w-full justify-end">
+        <div
+          className="max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md border border-primary/20 bg-primary/10 px-4 py-2.5 text-sm leading-relaxed text-foreground sm:max-w-[75%]"
+          style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+        >
+          {message}
+        </div>
+      </div>
+    );
+  }
+
+  // Assistant: flat on the page with a small logo mark
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        'flex w-full px-2 sm:px-4',
-        isUser ? 'justify-end' : 'justify-start'
-      )}
-    >
+    <div className="flex w-full items-start gap-3">
+      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-card ring-1 ring-border">
+        <Image src="/favicon.ico" alt="" width={16} height={16} />
+      </div>
       <div
         className={cn(
-          'max-w-[95%] sm:max-w-[80%] break-words whitespace-pre-wrap px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm',
-          isUser
-            ? 'bg-primary text-primary-foreground rounded-tl-2xl rounded-tr-xl rounded-bl-2xl rounded-br-none sm:rounded-tl-3xl sm:rounded-tr-2xl sm:rounded-bl-3xl sm:rounded-br-none'
-            : 'bg-card border border-border text-card-foreground rounded-tr-2xl rounded-tl-xl rounded-br-2xl rounded-bl-none sm:rounded-tr-3xl sm:rounded-tl-2xl sm:rounded-br-3xl sm:rounded-bl-none dark:bg-muted dark:border-transparent'
+          'min-w-0 flex-1 text-sm leading-relaxed text-foreground',
+          typeof message === 'string' && 'py-0.5'
         )}
-        style={{
-          wordBreak: 'break-word',
-          overflowWrap: 'anywhere',
-        }}
+        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
       >
         {typeof message === 'string' ? <p>{message}</p> : message}
       </div>
-    </motion.div>
+    </div>
   );
 }

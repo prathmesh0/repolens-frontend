@@ -49,16 +49,16 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
         {label && (
           <Label
             htmlFor={props.id}
-            className="text-sm font-semibold text-secondary"
+            className="text-[13px] font-medium text-foreground"
           >
             {label}
-            {required && <span className="text-red-500 ml-0.5">*</span>}
+            {required && <span className="ml-0.5 text-destructive">*</span>}
           </Label>
         )}
 
         <div className="relative flex w-full items-center">
           {onStartIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               {onStartIcon}
             </div>
           )}
@@ -68,10 +68,8 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
             type={inputType}
             placeholder={placeholder}
             className={cn(
-              'w-full rounded-md border text-sm font-normal transition-all duration-200',
-              'border-gray-300 bg-white text-gray-800 placeholder-gray-400',
-              'hover:primary focus:border-primary focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:hover:border-primary dark:focus:border-primary dark:focus:ring-primary',
-              error && 'border-red-500 focus:ring-red-200',
+              'w-full text-sm font-normal bg-background hover:border-foreground/25',
+              error && 'border-destructive focus-visible:ring-destructive/20',
               onStartIcon ? 'pl-10' : 'pl-3',
               onEndIcon || isPasswordType ? 'pr-10' : 'pr-3',
               className
@@ -84,23 +82,23 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
               type="button"
               title="Toggle password visibility"
               onClick={togglePasswordVisibility}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary dark:text-gray-400 "
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
               tabIndex={-1}
             >
               <PasswordIcon size={18} />
             </button>
           ) : (
             onEndIcon && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 {onEndIcon}
               </div>
             )
           )}
         </div>
 
-        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        {error && <p className="mt-0.5 text-xs text-destructive">{error}</p>}
         {!error && hint && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {hint}
           </p>
         )}

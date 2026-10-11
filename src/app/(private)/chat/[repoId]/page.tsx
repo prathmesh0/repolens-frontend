@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ChatService, Repository } from '@/api/services';
@@ -21,16 +15,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AIResponseFormatter } from '@/components/AIResponseFormatter';
 import { LoadingMessage } from '@/components/LoadingMessage';
 import { Toast } from '@/lib/Toast';
-import CustomButton from '@/components/CustomButton';
+import { Button } from '@/components/ui/button';
 import RepoProgress from '@/components/RepoProgress';
 import ChatSources from '@/components/ChatSources';
 import { ApiError } from '@/lib/apiMethods';
 import { useRepoStatus } from '@/lib/useRepoStatus';
-import {
-  historyToItems,
-  newChatItemId,
-  renderChatItem,
-} from '@/lib/chatItems';
+import { EASE } from '@/lib/motion';
+import { historyToItems, newChatItemId, renderChatItem } from '@/lib/chatItems';
 
 const HISTORY_PAGE_SIZE = 30;
 
@@ -302,96 +293,108 @@ export default function ChatPage() {
   };
 
   return (
-    <main className="flex flex-col h-full bg-background text-foreground ">
-      {/* Chat Section */}
+    <main className="flex h-full flex-col bg-background text-foreground">
+      {/* Conversation */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 md:p-6 space-y-3 sm:space-y-4 scroll-smooth"
-        style={{
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'var(--muted) transparent',
-        }}
+        className="custom-scrollbar flex-1 scroll-smooth overflow-y-auto overflow-x-hidden"
       >
-        <RepoProgress status={repoStatus} />
+        <div className="mx-auto w-full max-w-3xl space-y-5 px-3 py-6 sm:space-y-6 sm:px-4">
+          <RepoProgress status={repoStatus} />
 
-        {overview?.basicInfo && (
-          <ChatMessage
-            sender="assistant"
-            message={
-              <RepoBasicInfoCard repoInfo={overview.basicInfo} showHeader={false} />
-            }
-          />
-        )}
+          {overview?.basicInfo && (
+            <ChatMessage
+              sender="assistant"
+              message={
+                <RepoBasicInfoCard
+                  repoInfo={overview.basicInfo}
+                  showHeader={false}
+                />
+              }
+            />
+          )}
 
-        {hasMore && (
-          <div className="flex justify-center">
-            <CustomButton
-              variant="outline"
-              size="sm"
-              disabled={loadingOlder}
-              onClick={handleLoadEarlier}
-              className="rounded-full bg-transparent text-accent-foreground"
-            >
-              {loadingOlder ? 'Loading...' : 'Load earlier messages'}
-            </CustomButton>
-          </div>
-        )}
+          {hasMore && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loadingOlder}
+                onClick={handleLoadEarlier}
+                className="rounded-full bg-card/80 text-muted-foreground hover:text-foreground"
+              >
+                {loadingOlder ? 'Loading...' : 'Load earlier messages'}
+              </Button>
+            </div>
+          )}
 
-        {olderItems.map((item) => (
-          <ChatMessage
-            key={item.id}
-            sender={item.role}
-            message={renderChatItem(item)}
-          />
-        ))}
-
-        <AnimatePresence initial={false}>
-          {items.map((item) => (
-            <motion.div
+          {olderItems.map((item) => (
+            <ChatMessage
               key={item.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ChatMessage sender={item.role} message={renderChatItem(item)} />
-            </motion.div>
+              sender={item.role}
+              message={renderChatItem(item)}
+            />
           ))}
-        </AnimatePresence>
 
-        {streaming && (
-          <ChatMessage
-            sender="assistant"
-            message={
-              streaming.text ? (
-                <div className="space-y-2">
-                  <AIResponseFormatter answer={streaming.text} />
-                  <ChatSources sources={streaming.sources} />
-                </div>
-              ) : (
-                <LoadingMessage text="AI is generating response" />
-              )
-            }
-          />
-        )}
+          <AnimatePresence initial={false}>
+            {items.map((item) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, ease: EASE }}
+              >
+                <ChatMessage
+                  sender={item.role}
+                  message={renderChatItem(item)}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
-        <div ref={messagesEndRef} />
+          {streaming && (
+            <div className="animate-fade-up">
+              <ChatMessage
+                sender="assistant"
+                message={
+                  streaming.text ? (
+                    <div className="space-y-2">
+                      <AIResponseFormatter answer={streaming.text} />
+                      <span
+                        className="ml-2 inline-block h-4 w-0.5 translate-y-0.5 animate-caret bg-primary"
+                        aria-hidden
+                      />
+                      <ChatSources sources={streaming.sources} />
+                    </div>
+                  ) : (
+                    <LoadingMessage text="AI is generating response" />
+                  )
+                }
+              />
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Chat Actions + Input */}
-      <div className="sticky bottom-0 left-0 right-0 bg-background px-4 py-2">
-        <ChatActionsBar onSelect={handleAction} />
-        <ChatInput
-          onSend={handleSend}
-          disabled={!chatReady || !!streaming}
-          placeholder={
-            !chatReady
-              ? 'Chat is available once the repository has finished indexing...'
-              : streaming
-              ? 'AI is answering...'
-              : 'Ask your question...'
-          }
-        />
+      {/* Quick actions + input */}
+      <div className="shrink-0 bg-gradient-to-t from-background via-background to-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+        <div className="mx-auto w-full max-w-3xl px-3 sm:px-4">
+          <ChatActionsBar onSelect={handleAction} />
+          <ChatInput
+            onSend={handleSend}
+            disabled={!chatReady || !!streaming}
+            placeholder={
+              !chatReady
+                ? 'Chat is available once the repository has finished indexing...'
+                : streaming
+                  ? 'AI is answering...'
+                  : 'Ask your question...'
+            }
+          />
+        </div>
       </div>
     </main>
   );

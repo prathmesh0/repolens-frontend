@@ -4,7 +4,7 @@ const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       {children}
-      <Toaster position="top-right" theme="light" />
+      <Toaster position="top-right" theme="system" />
     </>
   );
 };

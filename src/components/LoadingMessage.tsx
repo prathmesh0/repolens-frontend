@@ -5,21 +5,21 @@ export const LoadingMessage = ({
 }: {
   text?: string;
 }) => (
-  <div className="p-2 ">
+  <div className="py-1">
     <div className="flex items-center gap-3">
       <div className="flex gap-1">
         <motion.div
-          className="w-2 h-2 bg-primary rounded-full"
+          className="h-1.5 w-1.5 rounded-full bg-primary"
           animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
           transition={{ duration: 1, repeat: Infinity, delay: 0 }}
         />
         <motion.div
-          className="w-2 h-2 bg-primary rounded-full"
+          className="h-1.5 w-1.5 rounded-full bg-primary"
           animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
           transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
         />
         <motion.div
-          className="w-2 h-2 bg-primary rounded-full"
+          className="h-1.5 w-1.5 rounded-full bg-primary"
           animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
           transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
         />

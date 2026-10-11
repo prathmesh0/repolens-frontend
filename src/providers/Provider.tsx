@@ -5,6 +5,7 @@ import { NuqsAdapter } from 'nuqs/adapters/react';
 import { AppContextProvider } from './AppContextProvider';
 import ToastProvider from './ToastProvider';
 import { ThemeProvider } from './ThemeProvider';
+import { MotionConfig } from 'framer-motion';
 
 type Props = {
   children: React.ReactNode;
@@ -22,7 +23,7 @@ const Provider = ({ children }: Props) => {
               enableSystem
               disableTransitionOnChange
             >
-              {children}
+              <MotionConfig reducedMotion="user">{children}</MotionConfig>
             </ThemeProvider>
           </ToastProvider>
         </AppContextProvider>

@@ -1,3 +1,5 @@
+'use client';
+
 import { cn } from '@/lib/utils';
 import {
   ChevronLeft,
@@ -7,6 +9,7 @@ import {
   Search,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from './ui/button';
 
 import CustomInput from './CustomInput';
@@ -16,12 +19,16 @@ import { User } from '@/api/services';
 import { RepoHistoryItem } from '@/types/repo';
 import { Skeleton } from './ui/skeleton';
 import Image from 'next/image';
+import { spring } from '@/lib/motion';
 
 interface ISidebar {
   isOpen: boolean;
   isMobile: boolean;
   toggleSidebar: () => void;
 }
+
+const WIDTH_OPEN = 272;
+const WIDTH_RAIL = 68;
 
 function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -64,6 +71,7 @@ function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
 
   const handleNavClick = (id: string) => {
     if (id === 'new') {
+      if (isMobile) toggleSidebar();
       router.push('/home');
     } else if (id === 'search') {
       if (!isOpen) {
@@ -76,7 +84,6 @@ function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
   };
 
   const handleChatClick = (repo: RepoHistoryItem) => {
-    console.log('RepoId in Sidebar', repo.repoId);
     setActiveChatId(repo.repoId);
     if (isMobile) {
       toggleSidebar();
@@ -84,141 +91,172 @@ function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
     router.push(`/chat/${repo.repoId}`);
   };
 
+  // Desktop: width animates between full and icon rail.
+  // Mobile: fixed drawer that slides in from the left.
+  const animate = isMobile
+    ? { x: isOpen ? 0 : '-100%', width: WIDTH_OPEN }
+    : { x: 0, width: isOpen ? WIDTH_OPEN : WIDTH_RAIL };
+
+  const expanded = isOpen;
+
   return (
-    <aside
+    <motion.aside
+      initial={false}
+      animate={animate}
+      transition={spring}
       className={cn(
-        isMobile ? 'fixed z-30' : 'relative',
-        ' h-full bg-card border-r border-border transition-all duration-300 flex flex-col',
-        isOpen ? 'w-64' : isMobile ? 'w-0' : 'w-16',
-        !isOpen && isMobile ? 'invisible' : 'visible'
+        'flex h-full flex-col border-r border-border bg-sidebar',
+        isMobile
+          ? 'fixed inset-y-0 left-0 z-40 shadow-xl'
+          : 'relative shrink-0 overflow-hidden'
       )}
+      aria-label="Sidebar"
     >
-      {/* Top section */}
-      <div className="flex items-center justify-between px-2 h-[60.5px] border-b border-border bg-card sticky top-0 z-10 min-w-0">
-        {isOpen ? (
-          <div
-            className="flex items-center justify-center w-10 h-10 rounded-md bg-muted p-1"
-            title="Repolens"
-          >
-            <Image
-              src="/favicon.ico" // serve the favicon from your public folder root
-              alt="Repolens Favicon"
-              width={32}
-              height={32}
-            />
+      {/* Top: logo + collapse toggle */}
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-3">
+        {expanded ? (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted ring-1 ring-border">
+              <Image
+                src="/favicon.ico"
+                alt="Repolens"
+                width={20}
+                height={20}
+              />
+            </div>
+            <span className="truncate text-[15px] font-semibold tracking-tight">
+              Repolens
+            </span>
           </div>
         ) : null}
 
         {!isMobile && (
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             onClick={toggleSidebar}
-            className="hover:bg-muted min-w-[40px] flex justify-center"
+            className={cn(
+              'text-muted-foreground hover:text-foreground',
+              !expanded && 'mx-auto'
+            )}
+            aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
-            {isOpen ? (
-              <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+            {expanded ? (
+              <ChevronLeft className="h-4 w-4" />
             ) : (
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4" />
             )}
           </Button>
         )}
       </div>
 
-      {/* Navigation + Chat History */}
-      <div
-        className={cn(
-          'p-3 flex-1 overflow-y-auto space-y-2 custom-scrollbar',
-          !isOpen ? 'overflow-hidden' : ''
+      {/* Actions + history */}
+      <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden p-3">
+        <Button
+          onClick={() => handleNavClick('new')}
+          className={cn(
+            'w-full justify-start gap-2',
+            !expanded && 'justify-center px-0'
+          )}
+          title="New analysis"
+        >
+          <Plus className="h-4 w-4 shrink-0" />
+          {expanded && <span>New analysis</span>}
+        </Button>
+
+        <Button
+          variant="ghost"
+          onClick={() => handleNavClick('search')}
+          className={cn(
+            'w-full justify-start gap-2 text-muted-foreground hover:text-foreground',
+            !expanded && 'justify-center px-0'
+          )}
+          title="Search chats"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          {expanded && <span>Search chats</span>}
+        </Button>
+
+        {showSearch && expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden px-0.5 pb-1"
+          >
+            <CustomInput
+              placeholder="Search chats..."
+              onStartIcon={<Search size={16} />}
+              className="py-1.5 text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </motion.div>
         )}
-      >
-        {/* Navigation options */}
-        <div className="space-y-1">
-          {/* Nav Items */}
-          {[
-            { id: 'new', name: 'New Chat', icon: <Plus className="h-4 w-4" /> },
-            {
-              id: 'search',
-              name: 'Search Chats',
-              icon: <Search className="h-4 w-4" />,
-            },
-          ].map((item) => (
-            <div
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors duration-200',
-                'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-              title={!isOpen ? item.name : ''}
-            >
-              {item.icon}
-              {isOpen && <span>{item.name}</span>}
-            </div>
-          ))}
 
-          {/* Search Input */}
-          {showSearch && isOpen && (
-            <div className="mt-2 px-1">
-              <CustomInput
-                placeholder="Search chats..."
-                onStartIcon={<Search size={16} />}
-                className="text-sm py-1.5"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          )}
-        </div>
+        {expanded && (
+          <p className="px-2 pb-1 pt-4 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Recent
+          </p>
+        )}
+        {!expanded && <div className="my-2 h-px bg-border" />}
 
-        {/* Chat History */}
-        <div className="mt-3">
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-2">
-                  <Skeleton className="h-4 w-4 rounded" />
-                  {isOpen && <Skeleton className="h-4 w-32" />}
-                </div>
-              ))}
-            </div>
-          ) : isError ? (
-            <p className="text-center text-sm text-red-500 py-2">
-              ⚠️ Failed to load repo history.
-            </p>
-          ) : repoHistory.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-2">
-              {isOpen ? 'No repositories found.' : 'No repos'}
-            </p>
-          ) : (
-            repoHistory.map((repo) => (
-              <div
-                key={repo.repoId}
-                onClick={() => handleChatClick(repo)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors duration-200 h-9',
-                  activeChatId === repo.repoId
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-muted'
-                )}
-                title={repo.repoName}
-              >
-                {isOpen ? (
-                  <>
-                    <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate max-w-[150px] block">
-                      {repo.repoName}
-                    </span>
-                  </>
-                ) : (
-                  <MessageSquare className="h-4 w-4" />
-                )}
+        {isLoading ? (
+          <div className="space-y-1.5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-2 px-2 py-2">
+                <Skeleton className="h-4 w-4 shrink-0 rounded" />
+                {expanded && <Skeleton className="h-4 w-32" />}
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <p className="py-2 text-center text-sm text-destructive">
+            Failed to load repo history.
+          </p>
+        ) : repoHistory.length === 0 ? (
+          <p className="py-2 text-center text-sm text-muted-foreground">
+            {expanded ? 'No repositories found.' : '-'}
+          </p>
+        ) : (
+          <ul className="space-y-0.5">
+            {repoHistory.map((repo) => {
+              const active = activeChatId === repo.repoId;
+              return (
+                <li key={repo.repoId}>
+                  <button
+                    type="button"
+                    onClick={() => handleChatClick(repo)}
+                    title={repo.repoName}
+                    className={cn(
+                      'relative flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm transition-colors duration-150',
+                      active
+                        ? 'bg-primary/10 font-medium text-primary'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                      !expanded && 'justify-center px-0'
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="sidebar-active"
+                        transition={spring}
+                        className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary"
+                      />
+                    )}
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    {expanded && (
+                      <span className="block min-w-0 flex-1 truncate">
+                        {repo.repoName}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
-    </aside>
+    </motion.aside>
   );
 }
 

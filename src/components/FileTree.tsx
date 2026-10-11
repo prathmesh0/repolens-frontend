@@ -32,8 +32,10 @@ function FileNode({ node, level = 0 }: { node: FileNodeType; level?: number }) {
     <div style={{ marginLeft: level * 12 }}>
       <div
         className={cn(
-          'flex items-center gap-1 pl-1 sm:pl-2 pr-2 sm:pr-4 py-1 cursor-pointer',
-          isDir ? 'hover:bg-muted/60' : 'text-muted-foreground'
+          'flex items-center gap-1.5 rounded-md pl-1 sm:pl-2 pr-2 sm:pr-3 py-1.5 text-sm transition-colors duration-150',
+          isDir
+            ? 'cursor-pointer hover:bg-muted'
+            : 'cursor-default text-muted-foreground hover:bg-muted/50'
         )}
         onClick={() => isDir && setOpen((v) => !v)}
       >
@@ -51,16 +53,18 @@ function FileNode({ node, level = 0 }: { node: FileNodeType; level?: number }) {
         ) : (
           <FileIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" />
         )}
-        <span className={cn(isDir ? 'font-medium' : '', 'truncate')}>
+        <span
+          className={cn(isDir ? 'font-medium text-foreground' : '', 'truncate')}
+        >
           {node.name}
         </span>
         {node.extension && !isDir && (
-          <span className="text-xs ml-1 sm:ml-2 text-muted-foreground hidden sm:inline">
+          <span className="ml-1 hidden font-mono text-xs text-muted-foreground sm:ml-2 sm:inline">
             {node.extension}
           </span>
         )}
         {!isDir && (
-          <span className="ml-auto text-xs text-muted-foreground hidden md:inline flex-shrink-0">
+          <span className="ml-auto hidden flex-shrink-0 font-mono text-xs text-muted-foreground md:inline">
             {node.size} bytes
           </span>
         )}
@@ -92,11 +96,14 @@ export default function FileTree({
   fileStructure: FileNodeType;
 }) {
   return (
-    <div className="p-3 sm:p-4">
-      <div className="font-semibold mb-2 text-sm sm:text-base md:text-lg">
-        📂 File Structure
+    <div className="rounded-2xl border border-border bg-card p-3 shadow-xs sm:p-4">
+      <div className="mb-2 flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <FolderIcon className="h-3.5 w-3.5 text-primary" />
+        File Structure
       </div>
-      <FileNode node={fileStructure} />
+      <div className="custom-scrollbar max-h-[420px] overflow-auto">
+        <FileNode node={fileStructure} />
+      </div>
     </div>
   );
 }
