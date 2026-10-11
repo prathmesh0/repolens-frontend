@@ -1,10 +1,6 @@
 import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import {
-  vscDarkPlus,
-  prism,
-} from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useTheme } from 'next-themes';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface AIResponseFormatterProps {
   answer: string;
@@ -13,8 +9,6 @@ interface AIResponseFormatterProps {
 export const AIResponseFormatter: React.FC<AIResponseFormatterProps> = ({
   answer,
 }) => {
-  const { theme } = useTheme();
-
   // Function to parse markdown-style formatting (bold, italic, etc.)
   const parseMarkdownText = (text: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
@@ -104,7 +98,6 @@ export const AIResponseFormatter: React.FC<AIResponseFormatterProps> = ({
       // Add code block
       const language = match[1] || 'text';
       const code = match[2].trim();
-      const isDark = theme === 'dark';
 
       parts.push(
         <div
