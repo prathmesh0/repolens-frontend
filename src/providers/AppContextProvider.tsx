@@ -1,6 +1,8 @@
 import { ApiError, apiPost } from '@/lib/apiMethods';
 import { Toast } from '@/lib/Toast';
-import { removeFromLocalStorage, saveToLocalStorage } from '@/lib/utils';
+import { clearAuthStorage, saveToLocalStorage } from '@/lib/utils';
+import { ME_QUERY_KEY } from '@/lib/useMe';
+import { useQueryClient } from '@tanstack/react-query';
 import { ApiBaseResponse } from '@/types/api';
 import {
   ILogin,
@@ -9,35 +11,13 @@ import {
   IRegister,
 } from '@/types/auth';
 import { useRouter } from 'next/navigation';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-
-export interface IUser {
-  _id: string;
-  username: string;
-  email: string;
-  repoHistory: string[];
-}
-
-interface IAuth {
-  isAuthenticated: boolean;
-  user: IUser | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-}
+import React, { createContext, useContext } from 'react';
 
 interface IAppContext {
-  auth: IAuth;
   handleLogin: (values: ILogin) => Promise<void>;
   handleRegister: (values: IRegister) => Promise<void>;
   handleLogout: () => void;
 }
-
-const initialAuthState: IAuth = {
-  isAuthenticated: false,
-  user: null,
-  accessToken: null,
-  refreshToken: null,
-};
 
 const AppContext = createContext<IAppContext | undefined>(undefined);
 
@@ -46,29 +26,8 @@ export const AppContextProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [auth, setAuth] = useState<IAuth>(initialAuthState);
   const router = useRouter();
-
-  // On mount, check if auth is saved in localStorage (simplified)
-  useEffect(() => {
-    const savedAuth = localStorage.getItem('auth');
-    if (savedAuth) {
-      try {
-        setAuth(JSON.parse(savedAuth));
-      } catch {
-        localStorage.removeItem('auth');
-      }
-    }
-  }, []);
-
-  // Persist auth to localStorage on change
-  useEffect(() => {
-    if (auth.isAuthenticated) {
-      localStorage.setItem('auth', JSON.stringify(auth));
-    } else {
-      localStorage.removeItem('auth');
-    }
-  }, [auth]);
+  const queryClient = useQueryClient();
 
   const handleLogin = async (values: ILogin) => {
     try {
@@ -78,20 +37,13 @@ export const AppContextProvider = ({
       );
 
       if (res?.statusCode === 200) {
-        const { accessToken, refreshToken, user } = res.data;
+        const { accessToken, refreshToken } = res.data;
 
-        // Save to localStorage for persistence
+        // Tokens stay in localStorage until cookie-only auth (task 4);
+        // who is logged in comes from GET /users/me.
         saveToLocalStorage('token', accessToken);
         saveToLocalStorage('refreshToken', refreshToken);
-        saveToLocalStorage('user', user);
-
-        // Update context state
-        setAuth({
-          isAuthenticated: true,
-          user,
-          accessToken,
-          refreshToken,
-        });
+        queryClient.removeQueries({ queryKey: ME_QUERY_KEY });
 
         Toast.success(res?.message || 'Logged in successfully');
         setTimeout(() => router.push('/home'), 300);
@@ -147,18 +99,15 @@ export const AppContextProvider = ({
       Toast.error('Something went wrong during logout');
     } finally {
       // Clear all local/session data no matter what
-      setAuth(initialAuthState);
-      removeFromLocalStorage('token');
-      removeFromLocalStorage('refreshToken');
-      removeFromLocalStorage('user');
-      localStorage.removeItem('auth');
+      clearAuthStorage();
+      queryClient.clear();
       router.push('/login');
     }
   };
 
   return (
     <AppContext.Provider
-      value={{ auth, handleLogin, handleLogout, handleRegister }}
+      value={{ handleLogin, handleLogout, handleRegister }}
     >
       {children}
     </AppContext.Provider>

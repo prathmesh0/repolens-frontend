@@ -9,20 +9,26 @@ import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
   onSend: (message: IChatRequest) => Promise<void>;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
-export default function ChatInput({ onSend }: ChatInputProps) {
+export default function ChatInput({
+  onSend,
+  disabled = false,
+  placeholder = 'Ask your question...',
+}: ChatInputProps) {
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || disabled) return;
     onSend({ question: trimmed });
     setInput('');
   };
 
-  const isValid = input.trim().length > 0;
+  const isValid = input.trim().length > 0 && !disabled;
 
   // Auto-resize the textarea like ChatGPT
   useEffect(() => {
@@ -44,7 +50,8 @@ export default function ChatInput({ onSend }: ChatInputProps) {
         >
           {/* Textarea */}
           <Textarea
-            placeholder="Ask your question..."
+            placeholder={placeholder}
+            disabled={disabled}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) =>

@@ -11,7 +11,7 @@ import { Button } from './ui/button';
 
 import CustomInput from './CustomInput';
 import { usePathname, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { User } from '@/api/services';
 import { RepoHistoryItem } from '@/types/repo';
 import { Skeleton } from './ui/skeleton';
@@ -28,6 +28,7 @@ function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
   const [showSearch, setShowSearch] = useState(false);
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedTerm, setDebouncedTerm] = useState('');
   const pathname = usePathname();
 
   // Update activeChatId based on current path
@@ -44,24 +45,22 @@ function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
     data: repoHistoryResponse,
     isLoading,
     isError,
-    refetch,
   } = useQuery({
-    queryKey: ['repoHistory', searchTerm],
+    queryKey: ['repoHistory', debouncedTerm],
     queryFn: async () => {
-      const res = await User.getRepoHistory(searchTerm || '');
+      const res = await User.getRepoHistory(debouncedTerm || '');
       return res?.data || [];
     },
+    placeholderData: keepPreviousData,
   });
 
   const repoHistory: RepoHistoryItem[] = repoHistoryResponse || [];
 
-  // ✅ Handle search debounce
+  // Debounce the search term; the query key follows the debounced value
   useEffect(() => {
-    const delay = setTimeout(() => {
-      refetch();
-    }, 400); // debounce for 400ms
+    const delay = setTimeout(() => setDebouncedTerm(searchTerm), 300);
     return () => clearTimeout(delay);
-  }, [searchTerm, refetch]);
+  }, [searchTerm]);
 
   const handleNavClick = (id: string) => {
     if (id === 'new') {
