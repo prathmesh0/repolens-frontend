@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(req: NextRequest) {
-  const token = req.cookies.get('accessToken');
+  // The access cookie can expire while the refresh cookie is still valid;
+  // /users/me refreshes it, so either one means "maybe logged in".
+  const token =
+    req.cookies.get('accessToken') || req.cookies.get('refreshToken');
 
   const protectedRoutes = ['/home', '/chat'];
   const isProtected = protectedRoutes.some((path) =>
