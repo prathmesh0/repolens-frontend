@@ -25,6 +25,8 @@ export const ENPOINTS = {
   },
   CHAT: {
     CHAT_WITH_REPO: (_id: string) => `${API_BASE}/aiChat/chat/${_id}`,
+    CHAT_STREAM: (_id: string) =>
+      `${API_BASE}/aiChat/chat/${_id}?stream=true`,
     CHAT_HISTORY: (_id: string) => `${API_BASE}/aiChat/chat-history/${_id}`,
   },
 };

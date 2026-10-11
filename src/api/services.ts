@@ -1,4 +1,6 @@
+import { enhancedFetch } from '@/api/interceptor';
 import { ApiError, apiGet, apiPost } from '@/lib/apiMethods';
+import { readSSE } from '@/lib/sse';
 import { BODY, ENPOINTS } from '@/lib/Config';
 import { ApiBaseResponse } from '@/types/api';
 import { ILogin, IMe } from '@/types/auth';
@@ -115,6 +117,63 @@ export class ChatService {
       console.error('ERROR: chatwithRepoRequest', error);
       return errorBody<ChatAnalysisResponse>(error);
     }
+  }
+
+  // Streaming chat. Resolves with the chatId once the server saved the
+  // answer. Problems before the model starts come back as plain JSON errors
+  // (not a stream) and are thrown as ApiError.
+  public static async streamChat(
+    _id: string,
+    body: IChatRequest,
+    handlers: {
+      signal?: AbortSignal;
+      onSources?: (sources: string[]) => void;
+      onToken: (text: string) => void;
+    }
+  ): Promise<string | undefined> {
+    const res = await enhancedFetch(ENPOINTS.CHAT.CHAT_STREAM(_id), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify(BODY.CHAT.CHAT_WITH_REPO(body)),
+      signal: handlers.signal,
+    });
+
+    const isStream = res.headers
+      .get('content-type')
+      ?.includes('text/event-stream');
+    if (!res.ok || !isStream) {
+      const text = await res.text();
+      let parsed: { message?: string } | undefined;
+      try {
+        parsed = text ? JSON.parse(text) : undefined;
+      } catch {
+        parsed = undefined;
+      }
+      throw new ApiError(
+        res.status,
+        parsed?.message || res.statusText || 'Chat request failed',
+        parsed
+      );
+    }
+
+    for await (const { event, data } of readSSE(res, handlers.signal)) {
+      const payload = data as {
+        sources?: string[];
+        text?: string;
+        chatId?: string;
+        message?: string;
+      };
+      if (event === 'sources') handlers.onSources?.(payload.sources ?? []);
+      else if (event === 'token') handlers.onToken(payload.text ?? '');
+      else if (event === 'done') return payload.chatId;
+      else if (event === 'error') {
+        throw new Error(payload.message || 'The answer could not be generated');
+      }
+    }
+    throw new Error('Chat stream closed before the answer finished');
   }
 
   public static async chatHistory(

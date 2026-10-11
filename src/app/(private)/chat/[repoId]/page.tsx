@@ -25,6 +25,8 @@ import { AIResponseFormatter } from '@/components/AIResponseFormatter';
 import { LoadingMessage } from '@/components/LoadingMessage';
 import { Toast } from '@/lib/Toast';
 import RepoProgress from '@/components/RepoProgress';
+import ChatSources from '@/components/ChatSources';
+import { ApiError } from '@/lib/apiMethods';
 import { useRepoStatus } from '@/lib/useRepoStatus';
 
 type ChatMessageType = {
@@ -70,6 +72,11 @@ export default function ChatPage() {
   const { repoId } = useParams<{ repoId: string }>();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const [streaming, setStreaming] = useState<{
+    text: string;
+    sources: string[];
+  } | null>(null);
   const { status: repoStatus } = useRepoStatus(repoId);
   // Chat only works once embeddings are ready
   const chatReady = repoStatus?.statuses.embeddingStatus === 'ready';
@@ -158,12 +165,24 @@ export default function ChatPage() {
     }
   }, [isHistorySuccess, chatHistory, refetchRepoInfo]);
 
-  // Scroll to bottom when messages update (with smooth animation)
+  // Stop generating if the user leaves the page or switches repo
+  useEffect(() => {
+    return () => {
+      streamAbortRef.current?.abort();
+      streamAbortRef.current = null;
+    };
+  }, [repoId]);
+
+  // Scroll to bottom when messages update; no smooth animation while tokens
+  // arrive. 'instant' (not 'auto') because the container has CSS
+  // scroll-behavior: smooth, which 'auto' would inherit
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({
+        behavior: streaming ? 'instant' : 'smooth',
+      });
     }
-  }, [messages]);
+  }, [messages, streaming]);
 
   // Show repo info as first message only when there is no chat history AND fetched successfully
   useEffect(() => {
@@ -221,75 +240,53 @@ export default function ChatPage() {
   };
 
   const handleSend = async (msg: IChatRequest) => {
-    // Add user's message to chat
+    if (streamAbortRef.current) return; // one answer at a time
     setMessages((prev) => [...prev, { sender: 'user', message: msg.question }]);
-    //  Add loading message
-    setMessages((prev) => [
-      ...prev,
-      {
-        sender: 'assistant',
-        message: <LoadingMessage text="AI is generating response" />,
-        isLoading: true,
-      },
-    ]);
+
+    const ctrl = new AbortController();
+    streamAbortRef.current = ctrl;
+    setStreaming({ text: '', sources: [] });
+
+    let text = '';
+    let sources: string[] = [];
 
     try {
-      // Call backend API for chat response
-      const res = await ChatService.chatwithRepoRequest(repoId, msg);
+      await ChatService.streamChat(repoId, msg, {
+        signal: ctrl.signal,
+        onSources: (s) => {
+          sources = s;
+          setStreaming((prev) => prev && { ...prev, sources: s });
+        },
+        onToken: (t) => {
+          text += t;
+          setStreaming((prev) => prev && { ...prev, text });
+        },
+      });
 
-      // Remove loading message
-      setMessages((prev) => prev.filter((m) => !m.isLoading));
-
-      // Handle "No embeddings found for repo" special case
-      if (res?.success === false && res?.data === null) {
-        Toast.info(
-          'The requested operation is still running in the background. Please wait a moment and try again.'
-        );
-        // Optionally you can add a friendly assistant message as well (not raw error)
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: 'assistant',
-            message:
-              'The requested operation is still running in the background. Please wait a moment and try again.',
-          },
-        ]);
-        return;
-      }
-
-      // Handle successful response
-      if (res?.success && res?.data?.answer) {
-        const { answer } = res.data;
-
-        // assistant message with formatted visual output
-        const assistantMessage = <AIResponseFormatter answer={answer} />;
-
-        setMessages((prev) => [
-          ...prev,
-          { sender: 'assistant', message: assistantMessage },
-        ]);
-      } else {
-        // If success false or no data
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: 'assistant',
-            message:
-              res?.message ||
-              'AI could not generate a response right now. Please try again later.',
-          },
-        ]);
-      }
-    } catch (error) {
-      console.error('ERROR: chatwithRepoRequest', error);
-      setMessages((prev) => prev.filter((m) => !m.isLoading));
       setMessages((prev) => [
         ...prev,
         {
           sender: 'assistant',
-          message: 'Something went wrong while contacting AI service.',
+          message: (
+            <div className="space-y-2">
+              <AIResponseFormatter answer={text} />
+              <ChatSources sources={sources} />
+            </div>
+          ),
         },
       ]);
+    } catch (error) {
+      // Page left or request cancelled: nothing to show, nothing saved
+      if (ctrl.signal.aborted) return;
+      console.error('ERROR: streamChat', error);
+      const message =
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : 'Something went wrong while contacting AI service.';
+      setMessages((prev) => [...prev, { sender: 'assistant', message }]);
+    } finally {
+      if (streamAbortRef.current === ctrl) streamAbortRef.current = null;
+      if (!ctrl.signal.aborted) setStreaming(null);
     }
   };
 
@@ -452,6 +449,22 @@ export default function ChatPage() {
           ))}
         </AnimatePresence>
 
+        {streaming && (
+          <ChatMessage
+            sender="assistant"
+            message={
+              streaming.text ? (
+                <div className="space-y-2">
+                  <AIResponseFormatter answer={streaming.text} />
+                  <ChatSources sources={streaming.sources} />
+                </div>
+              ) : (
+                <LoadingMessage text="AI is generating response" />
+              )
+            }
+          />
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -460,11 +473,13 @@ export default function ChatPage() {
         <ChatActionsBar onSelect={handleAction} />
         <ChatInput
           onSend={handleSend}
-          disabled={!chatReady}
+          disabled={!chatReady || !!streaming}
           placeholder={
-            chatReady
-              ? 'Ask your question...'
-              : 'Chat is available once the repository has finished indexing...'
+            !chatReady
+              ? 'Chat is available once the repository has finished indexing...'
+              : streaming
+              ? 'AI is answering...'
+              : 'Ask your question...'
           }
         />
       </div>
