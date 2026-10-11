@@ -176,12 +176,15 @@ export class ChatService {
     throw new Error('Chat stream closed before the answer finished');
   }
 
+  // Returns the newest `limit` messages (oldest first). Pass `before` = _id of
+  // the oldest loaded message to page backwards.
   public static async chatHistory(
-    _id: string
+    _id: string,
+    params?: { limit?: number; before?: string }
   ): Promise<IRepoChatData | undefined> {
     try {
       const response = await apiGet<IRepoChatData>(
-        ENPOINTS.CHAT.CHAT_HISTORY(_id)
+        ENPOINTS.CHAT.CHAT_HISTORY(_id, params)
       );
       return response;
     } catch (error) {
