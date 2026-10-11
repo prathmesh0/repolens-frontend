@@ -102,8 +102,8 @@ export interface IAIAnalysisResponse {
 
 export interface IFullRepoInfo {
   basicInfo: IBasicRepoInfo['data']['basicInfo'];
-  fileStructure: IFileStructureNode;
-  aiAnalysis: IAIAnalysis;
+  fileStructure: IFileStructureNode | null;
+  aiAnalysis: IAIAnalysis | null;
   statuses: {
     fileStructureStatus: string;
     aiStatus: string;
