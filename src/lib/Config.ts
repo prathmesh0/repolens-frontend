@@ -27,7 +27,13 @@ export const ENPOINTS = {
     CHAT_WITH_REPO: (_id: string) => `${API_BASE}/aiChat/chat/${_id}`,
     CHAT_STREAM: (_id: string) =>
       `${API_BASE}/aiChat/chat/${_id}?stream=true`,
-    CHAT_HISTORY: (_id: string) => `${API_BASE}/aiChat/chat-history/${_id}`,
+    CHAT_HISTORY: (_id: string, params?: { limit?: number; before?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.before) qs.set('before', params.before);
+      const query = qs.toString();
+      return `${API_BASE}/aiChat/chat-history/${_id}${query ? `?${query}` : ''}`;
+    },
   },
 };
 

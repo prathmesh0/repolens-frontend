@@ -1,6 +1,13 @@
 'use client';
 
-import { JSX, useEffect, useRef, useState } from 'react';
+import {
+  JSX,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ChatService, Repository } from '@/api/services';
@@ -24,6 +31,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AIResponseFormatter } from '@/components/AIResponseFormatter';
 import { LoadingMessage } from '@/components/LoadingMessage';
 import { Toast } from '@/lib/Toast';
+import CustomButton from '@/components/CustomButton';
 import RepoProgress from '@/components/RepoProgress';
 import ChatSources from '@/components/ChatSources';
 import { ApiError } from '@/lib/apiMethods';
@@ -33,7 +41,48 @@ type ChatMessageType = {
   sender: 'user' | 'assistant';
   message: string | JSX.Element;
   isLoading?: boolean;
+  id?: string;
 };
+
+const HISTORY_PAGE_SIZE = 30;
+
+function formatHistoryMessage(msg: IRepoChatMessage): ChatMessageType {
+  const parsed = parseJSONSafe(msg.content);
+
+  // If assistant message and JSON, render structured component
+  if (msg.role === 'assistant' && parsed) {
+    if (parsed.basicInfo) {
+      return {
+        id: msg._id,
+        sender: 'assistant',
+        message: <RepoBasicInfoCard repoInfo={parsed.basicInfo} showHeader />,
+      };
+    } else if (parsed.fileStructure) {
+      return {
+        id: msg._id,
+        sender: 'assistant',
+        message: <FileTree fileStructure={parsed.fileStructure} />,
+      };
+    } else if (parsed.aiAnalysis) {
+      return {
+        id: msg._id,
+        sender: 'assistant',
+        message: <RepoAIAnalysisCard aiAnalysis={parsed.aiAnalysis} />,
+      };
+    }
+  }
+
+  if (msg.role === 'assistant') {
+    return {
+      id: msg._id,
+      sender: 'assistant',
+      message: <AIResponseFormatter answer={msg.content} />,
+    };
+  }
+
+  // Default (for user or plain text messages)
+  return { id: msg._id, sender: msg.role, message: msg.content };
+}
 
 function isBasicRepoInfo(data: unknown): data is IBasicRepoInfo {
   if (typeof data !== 'object' || data === null) return false;
@@ -72,6 +121,12 @@ export default function ChatPage() {
   const { repoId } = useParams<{ repoId: string }>();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = useRef<number | null>(null);
+  const [olderMessages, setOlderMessages] = useState<ChatMessageType[]>([]);
+  const [oldestId, setOldestId] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const streamAbortRef = useRef<AbortController | null>(null);
   const [streaming, setStreaming] = useState<{
     text: string;
@@ -89,11 +144,19 @@ export default function ChatPage() {
   } = useQuery({
     queryKey: ['chatHistory', repoId],
     queryFn: async () => {
-      const res = await ChatService.chatHistory(repoId); // implement this in your service
-      return res?.data?.messages;
+      const res = await ChatService.chatHistory(repoId, {
+        limit: HISTORY_PAGE_SIZE,
+      });
+      return res?.data;
     },
     enabled: !!repoId, // fetch only when repoId exists
+    // A refetch would reset the older pages the user already loaded
+    refetchOnWindowFocus: false,
   });
+  const historyMessages = useMemo(
+    () => chatHistory?.messages ?? [],
+    [chatHistory]
+  );
 
   // ✅ Fetch repo info via React Query
   const {
@@ -113,48 +176,12 @@ export default function ChatPage() {
   // ✅ Load chat history on mount
   useEffect(() => {
     if (isHistorySuccess) {
-      if (chatHistory && chatHistory.length > 0) {
-        const formattedMessages: ChatMessageType[] = chatHistory.map(
-          (msg: IRepoChatMessage) => {
-            const parsed = parseJSONSafe(msg.content);
-
-            // 🧠 If assistant message and JSON, render structured component
-            if (msg.role === 'assistant' && parsed) {
-              if (parsed.basicInfo) {
-                return {
-                  sender: 'assistant',
-                  message: (
-                    <RepoBasicInfoCard repoInfo={parsed.basicInfo} showHeader />
-                  ),
-                };
-              } else if (parsed.fileStructure) {
-                return {
-                  sender: 'assistant',
-                  message: <FileTree fileStructure={parsed.fileStructure} />,
-                };
-              } else if (parsed.aiAnalysis) {
-                return {
-                  sender: 'assistant',
-                  message: (
-                    <RepoAIAnalysisCard aiAnalysis={parsed.aiAnalysis} />
-                  ),
-                };
-              }
-            }
-
-            if (msg.role === 'assistant') {
-              return {
-                sender: 'assistant',
-                message: <AIResponseFormatter answer={msg.content} />,
-              };
-            }
-
-            // Default (for user or plain text messages)
-            return {
-              sender: msg.role,
-              message: msg.content,
-            };
-          }
+      if (historyMessages.length > 0) {
+        setOlderMessages([]);
+        setOldestId(historyMessages[0]._id);
+        setHasMore(!!chatHistory?.hasMore);
+        const formattedMessages: ChatMessageType[] = historyMessages.map(
+          formatHistoryMessage
         );
 
         setMessages(formattedMessages);
@@ -163,7 +190,44 @@ export default function ChatPage() {
         refetchRepoInfo();
       }
     }
-  }, [isHistorySuccess, chatHistory, refetchRepoInfo]);
+  }, [isHistorySuccess, chatHistory, historyMessages, refetchRepoInfo]);
+
+  const handleLoadEarlier = async () => {
+    if (!oldestId || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const res = await ChatService.chatHistory(repoId, {
+        limit: HISTORY_PAGE_SIZE,
+        before: oldestId,
+      });
+      if (!res?.success) {
+        Toast.error(res?.message || 'Could not load earlier messages');
+        return;
+      }
+      const page = res.data.messages;
+      if (page.length > 0) {
+        // Remember the height so the view stays on the same message
+        prevScrollHeightRef.current = scrollRef.current?.scrollHeight ?? null;
+        setOlderMessages((prev) => [...page.map(formatHistoryMessage), ...prev]);
+        setOldestId(page[0]._id);
+      }
+      setHasMore(res.data.hasMore && page.length > 0);
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
+  // After older messages are prepended, keep the viewport where it was
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const prev = prevScrollHeightRef.current;
+    if (!el || prev === null) return;
+    el.scrollTo({
+      top: el.scrollTop + (el.scrollHeight - prev),
+      behavior: 'instant',
+    });
+    prevScrollHeightRef.current = null;
+  }, [olderMessages]);
 
   // Stop generating if the user leaves the page or switches repo
   useEffect(() => {
@@ -427,6 +491,7 @@ export default function ChatPage() {
     <main className="flex flex-col h-full bg-background text-foreground ">
       {/* Chat Section */}
       <div
+        ref={scrollRef}
         className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 md:p-6 space-y-3 sm:space-y-4 scroll-smooth"
         style={{
           scrollbarWidth: 'thin',
@@ -434,6 +499,28 @@ export default function ChatPage() {
         }}
       >
         <RepoProgress status={repoStatus} />
+
+        {hasMore && (
+          <div className="flex justify-center">
+            <CustomButton
+              variant="outline"
+              size="sm"
+              disabled={loadingOlder}
+              onClick={handleLoadEarlier}
+              className="rounded-full bg-transparent text-accent-foreground"
+            >
+              {loadingOlder ? 'Loading...' : 'Load earlier messages'}
+            </CustomButton>
+          </div>
+        )}
+
+        {olderMessages.map((m, i) => (
+          <ChatMessage
+            key={m.id ?? `older-${i}`}
+            sender={m.sender}
+            message={m.message}
+          />
+        ))}
 
         <AnimatePresence initial={false}>
           {messages.map((m, i) => (

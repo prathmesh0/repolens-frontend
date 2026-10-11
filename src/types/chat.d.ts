@@ -24,7 +24,8 @@ export interface IRepoChatData {
   statusCode: number;
   data: {
     messages: IRepoChatMessage[];
-    chatId: string;
+    chatId: string | null;
+    hasMore: boolean;
   };
   message: string;
   success: boolean;
