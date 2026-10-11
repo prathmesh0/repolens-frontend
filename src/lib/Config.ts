@@ -2,7 +2,8 @@ import { ILogin, IRegister } from '@/types/auth';
 import { IChatRequest } from '@/types/chat';
 import { IAnalyse } from '@/types/repo';
 
-export const API_BASE: string = process.env.NEXT_PUBLIC_API_URL ?? '';
+// Same-origin path; next.config.ts rewrites /api/* to the backend
+export const API_BASE = '/api';
 
 export const ENPOINTS = {
   USERS: {

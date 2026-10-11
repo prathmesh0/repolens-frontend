@@ -1,6 +1,6 @@
 import { ApiError, apiPost } from '@/lib/apiMethods';
 import { Toast } from '@/lib/Toast';
-import { clearAuthStorage, saveToLocalStorage } from '@/lib/utils';
+import { clearLegacyAuthStorage } from '@/lib/utils';
 import { ME_QUERY_KEY } from '@/lib/useMe';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiBaseResponse } from '@/types/api';
@@ -11,7 +11,7 @@ import {
   IRegister,
 } from '@/types/auth';
 import { useRouter } from 'next/navigation';
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 
 interface IAppContext {
   handleLogin: (values: ILogin) => Promise<void>;
@@ -29,6 +29,11 @@ export const AppContextProvider = ({
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  // Tokens used to live in localStorage; remove leftovers from old sessions
+  useEffect(() => {
+    clearLegacyAuthStorage();
+  }, []);
+
   const handleLogin = async (values: ILogin) => {
     try {
       const res = await apiPost<ApiBaseResponse<ILoginResponse>>(
@@ -37,12 +42,8 @@ export const AppContextProvider = ({
       );
 
       if (res?.statusCode === 200) {
-        const { accessToken, refreshToken } = res.data;
-
-        // Tokens stay in localStorage until cookie-only auth (task 4);
-        // who is logged in comes from GET /users/me.
-        saveToLocalStorage('token', accessToken);
-        saveToLocalStorage('refreshToken', refreshToken);
+        // The backend set httpOnly cookies; who is logged in comes from
+        // GET /users/me.
         queryClient.removeQueries({ queryKey: ME_QUERY_KEY });
 
         Toast.success(res?.message || 'Logged in successfully');
@@ -98,8 +99,8 @@ export const AppContextProvider = ({
       console.error('❌ Logout error:', err);
       Toast.error('Something went wrong during logout');
     } finally {
-      // Clear all local/session data no matter what
-      clearAuthStorage();
+      // Drop all cached data no matter what; the backend clears the cookies
+      clearLegacyAuthStorage();
       queryClient.clear();
       router.push('/login');
     }

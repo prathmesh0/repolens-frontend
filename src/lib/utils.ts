@@ -25,11 +25,13 @@ export const getFromLocalStorage = (key: string) => {
   }
 };
 
-export const clearAuthStorage = () => {
+// Auth tokens are httpOnly cookies now; these keys only exist in browsers
+// that logged in before that change.
+export const clearLegacyAuthStorage = () => {
   removeFromLocalStorage('token');
   removeFromLocalStorage('refreshToken');
   removeFromLocalStorage('user');
-  removeFromLocalStorage('auth'); // legacy key
+  removeFromLocalStorage('auth');
 };
 
 export function parseJSONSafe(content: string) {
