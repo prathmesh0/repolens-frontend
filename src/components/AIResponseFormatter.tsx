@@ -3,10 +3,58 @@
 import React, { useState } from 'react';
 import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/prism-light';
+import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash';
+import css from 'react-syntax-highlighter/dist/esm/languages/prism/css';
+import diff from 'react-syntax-highlighter/dist/esm/languages/prism/diff';
+import go from 'react-syntax-highlighter/dist/esm/languages/prism/go';
+import java from 'react-syntax-highlighter/dist/esm/languages/prism/java';
+import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript';
+import json from 'react-syntax-highlighter/dist/esm/languages/prism/json';
+import jsx from 'react-syntax-highlighter/dist/esm/languages/prism/jsx';
+import markdown from 'react-syntax-highlighter/dist/esm/languages/prism/markdown';
+import markup from 'react-syntax-highlighter/dist/esm/languages/prism/markup';
+import python from 'react-syntax-highlighter/dist/esm/languages/prism/python';
+import rust from 'react-syntax-highlighter/dist/esm/languages/prism/rust';
+import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql';
+import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx';
+import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript';
+import yaml from 'react-syntax-highlighter/dist/esm/languages/prism/yaml';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Check, Copy } from 'lucide-react';
 import { Toast } from '@/lib/Toast';
+
+// Languages not listed here still render, just without colours
+const LANGUAGES: Record<string, unknown> = {
+  bash,
+  sh: bash,
+  shell: bash,
+  css,
+  diff,
+  go,
+  java,
+  javascript,
+  js: javascript,
+  json,
+  jsx,
+  markdown,
+  md: markdown,
+  markup,
+  html: markup,
+  xml: markup,
+  python,
+  py: python,
+  rust,
+  sql,
+  tsx,
+  typescript,
+  ts: typescript,
+  yaml,
+  yml: yaml,
+};
+Object.entries(LANGUAGES).forEach(([name, lang]) =>
+  SyntaxHighlighter.registerLanguage(name, lang)
+);
 
 interface AIResponseFormatterProps {
   answer: string;

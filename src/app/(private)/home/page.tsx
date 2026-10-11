@@ -14,9 +14,14 @@ import { IAnalyse } from '@/types/repo';
 import CustomInput from '@/components/CustomInput';
 import CustomButton from '@/components/CustomButton';
 import { useMe } from '@/lib/useMe';
-import Particles from '@/components/Particles';
+import dynamic from 'next/dynamic';
 import { capitalizeFirstLetter } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
+// WebGL background; keep ogl out of the initial bundle and off the server
+const Particles = dynamic(() => import('@/components/Particles'), {
+  ssr: false,
+});
+
 export default function HomePage() {
   const { data: user } = useMe();
   const [loading, setLoading] = useState(false);
