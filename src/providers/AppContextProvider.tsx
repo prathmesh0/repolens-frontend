@@ -1,4 +1,4 @@
-import { apiPost } from '@/lib/apiMethods';
+import { ApiError, apiPost } from '@/lib/apiMethods';
 import { Toast } from '@/lib/Toast';
 import { removeFromLocalStorage, saveToLocalStorage } from '@/lib/utils';
 import { ApiBaseResponse } from '@/types/api';
@@ -53,7 +53,11 @@ export const AppContextProvider = ({
   useEffect(() => {
     const savedAuth = localStorage.getItem('auth');
     if (savedAuth) {
-      setAuth(JSON.parse(savedAuth));
+      try {
+        setAuth(JSON.parse(savedAuth));
+      } catch {
+        localStorage.removeItem('auth');
+      }
     }
   }, []);
 
@@ -96,7 +100,11 @@ export const AppContextProvider = ({
       }
     } catch (err) {
       console.error('❌ Login error:', err);
-      Toast.error('Something went wrong. Try again.');
+      Toast.error(
+        err instanceof ApiError
+          ? err.message
+          : 'Something went wrong. Try again.'
+      );
     }
   };
 
@@ -115,7 +123,11 @@ export const AppContextProvider = ({
       }
     } catch (err) {
       console.error('❌ Register error:', err);
-      Toast.error('Something went wrong. Try again.');
+      Toast.error(
+        err instanceof ApiError
+          ? err.message
+          : 'Something went wrong. Try again.'
+      );
     }
   };
   const handleLogout = async () => {
