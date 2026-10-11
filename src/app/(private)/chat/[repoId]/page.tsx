@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  JSX,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -14,18 +13,9 @@ import { ChatService, Repository } from '@/api/services';
 import ChatMessage from '@/components/ChatMessage';
 import ChatActionsBar from '@/components/ChatActionsBar';
 import ChatInput from '@/components/ChatInput';
-import FileTree from '@/components/FileTree';
-import {
-  IAIAnalysisResponse,
-  IBasicRepoInfo,
-  IChatRequest,
-  IFileStructureRepoInfo,
-  IFullRepoInfo,
-  IRepoChatMessage,
-} from '@/types/chat';
-import { parseJSONSafe } from '@/lib/utils';
+import { IChatRequest, IFullRepoInfo } from '@/types/chat';
+import { ChatItem } from '@/types/chatItem';
 import RepoBasicInfoCard from '@/components/RepoInfoBasicCard';
-import RepoAIAnalysisCard from '@/components/RepoAiAnalysisCard';
 import { ChatPageSkeleton } from '@/components/ChatPageSkelaton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AIResponseFormatter } from '@/components/AIResponseFormatter';
@@ -36,94 +26,28 @@ import RepoProgress from '@/components/RepoProgress';
 import ChatSources from '@/components/ChatSources';
 import { ApiError } from '@/lib/apiMethods';
 import { useRepoStatus } from '@/lib/useRepoStatus';
-
-type ChatMessageType = {
-  sender: 'user' | 'assistant';
-  message: string | JSX.Element;
-  isLoading?: boolean;
-  id?: string;
-};
+import {
+  historyToItems,
+  newChatItemId,
+  renderChatItem,
+} from '@/lib/chatItems';
 
 const HISTORY_PAGE_SIZE = 30;
 
-function formatHistoryMessage(msg: IRepoChatMessage): ChatMessageType {
-  const parsed = parseJSONSafe(msg.content);
-
-  // If assistant message and JSON, render structured component
-  if (msg.role === 'assistant' && parsed) {
-    if (parsed.basicInfo) {
-      return {
-        id: msg._id,
-        sender: 'assistant',
-        message: <RepoBasicInfoCard repoInfo={parsed.basicInfo} showHeader />,
-      };
-    } else if (parsed.fileStructure) {
-      return {
-        id: msg._id,
-        sender: 'assistant',
-        message: <FileTree fileStructure={parsed.fileStructure} />,
-      };
-    } else if (parsed.aiAnalysis) {
-      return {
-        id: msg._id,
-        sender: 'assistant',
-        message: <RepoAIAnalysisCard aiAnalysis={parsed.aiAnalysis} />,
-      };
-    }
-  }
-
-  if (msg.role === 'assistant') {
-    return {
-      id: msg._id,
-      sender: 'assistant',
-      message: <AIResponseFormatter answer={msg.content} />,
-    };
-  }
-
-  // Default (for user or plain text messages)
-  return { id: msg._id, sender: msg.role, message: msg.content };
-}
-
-function isBasicRepoInfo(data: unknown): data is IBasicRepoInfo {
-  if (typeof data !== 'object' || data === null) return false;
-  const obj = data as {
-    data?: { basicInfo?: IBasicRepoInfo['data']['basicInfo'] };
-  };
-  return !!obj.data?.basicInfo;
-}
-
-function isFileStructureRepoInfo(
-  data: unknown
-): data is IFileStructureRepoInfo {
-  if (typeof data !== 'object' || data === null) return false;
-  const obj = data as {
-    data?: { fileStructure?: IFileStructureRepoInfo['data']['fileStructure'] };
-  };
-  return !!obj.data?.fileStructure;
-}
-
-function isAIAnalysisResponse(data: unknown): data is IAIAnalysisResponse {
-  if (typeof data !== 'object' || data === null) return false;
-  const obj = data as {
-    data?: { aiAnalysis?: IAIAnalysisResponse['data']['aiAnalysis'] };
-  };
-  return !!obj.data?.aiAnalysis;
-}
-
-function isFullRepoInfo(data: unknown): data is { data: IFullRepoInfo } {
-  if (typeof data !== 'object' || data === null) return false;
-  const obj = data as { data?: IFullRepoInfo };
-  const d = obj.data;
-  return !!(d?.basicInfo && d?.fileStructure && d?.aiAnalysis);
-}
+type RepoInfoEnvelope = {
+  success?: boolean;
+  message?: string;
+  data?: IFullRepoInfo;
+};
 
 export default function ChatPage() {
   const { repoId } = useParams<{ repoId: string }>();
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  // Conversation as plain data; components are picked in renderChatItem
+  const [items, setItems] = useState<ChatItem[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevScrollHeightRef = useRef<number | null>(null);
-  const [olderMessages, setOlderMessages] = useState<ChatMessageType[]>([]);
+  const [olderItems, setOlderItems] = useState<ChatItem[]>([]);
   const [oldestId, setOldestId] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -152,45 +76,35 @@ export default function ChatPage() {
     enabled: !!repoId, // fetch only when repoId exists
     // A refetch would reset the older pages the user already loaded
     refetchOnWindowFocus: false,
+    // Always load fresh on entering the page, so a recent exchange is not
+    // missing from a cached copy
+    staleTime: 0,
+    gcTime: 0,
   });
   const historyMessages = useMemo(
     () => chatHistory?.messages ?? [],
     [chatHistory]
   );
 
-  // ✅ Fetch repo info via React Query
-  const {
-    data: repoInfoResponse,
-    isLoading: isRepoLoading,
-    refetch: refetchRepoInfo,
-    isSuccess: isRepoSuccess,
-  } = useQuery({
+  // Repo data for the analysis cards, straight from getRepoInfo. The H1
+  // status stream invalidates this when a run finishes.
+  const { data: repoInfoResponse } = useQuery({
     queryKey: ['repoInfo', repoId],
-    queryFn: async () => {
-      const res = await Repository.getRepoInfo(repoId);
-      return res;
-    },
-    enabled: false,
+    queryFn: async () =>
+      (await Repository.getRepoInfo(repoId)) as RepoInfoEnvelope | undefined,
+    enabled: !!repoId,
   });
+  const overview = repoInfoResponse?.data;
 
-  // ✅ Load chat history on mount
+  // Load the latest history page on mount
   useEffect(() => {
-    if (isHistorySuccess) {
-      if (historyMessages.length > 0) {
-        setOlderMessages([]);
-        setOldestId(historyMessages[0]._id);
-        setHasMore(!!chatHistory?.hasMore);
-        const formattedMessages: ChatMessageType[] = historyMessages.map(
-          formatHistoryMessage
-        );
-
-        setMessages(formattedMessages);
-      } else {
-        // 🆕 No chat history — fetch repo info
-        refetchRepoInfo();
-      }
-    }
-  }, [isHistorySuccess, chatHistory, historyMessages, refetchRepoInfo]);
+    if (!isHistorySuccess) return;
+    setOlderItems([]);
+    setItems(historyToItems(historyMessages));
+    // Cursor and hasMore follow the raw page, not the filtered items
+    setOldestId(historyMessages[0]?._id ?? null);
+    setHasMore(!!chatHistory?.hasMore);
+  }, [isHistorySuccess, chatHistory, historyMessages]);
 
   const handleLoadEarlier = async () => {
     if (!oldestId || loadingOlder) return;
@@ -208,7 +122,7 @@ export default function ChatPage() {
       if (page.length > 0) {
         // Remember the height so the view stays on the same message
         prevScrollHeightRef.current = scrollRef.current?.scrollHeight ?? null;
-        setOlderMessages((prev) => [...page.map(formatHistoryMessage), ...prev]);
+        setOlderItems((prev) => [...historyToItems(page), ...prev]);
         setOldestId(page[0]._id);
       }
       setHasMore(res.data.hasMore && page.length > 0);
@@ -227,7 +141,7 @@ export default function ChatPage() {
       behavior: 'instant',
     });
     prevScrollHeightRef.current = null;
-  }, [olderMessages]);
+  }, [olderItems]);
 
   // Stop generating if the user leaves the page or switches repo
   useEffect(() => {
@@ -246,46 +160,9 @@ export default function ChatPage() {
         behavior: streaming ? 'instant' : 'smooth',
       });
     }
-  }, [messages, streaming]);
+  }, [items, streaming]);
 
-  // Show repo info as first message only when there is no chat history AND fetched successfully
-  useEffect(() => {
-    let repoInfo: IBasicRepoInfo['data']['basicInfo'] | undefined = undefined;
-
-    if (isBasicRepoInfo(repoInfoResponse)) {
-      repoInfo = repoInfoResponse.data.basicInfo;
-    } else if (isFullRepoInfo(repoInfoResponse)) {
-      repoInfo = repoInfoResponse.data.basicInfo;
-    }
-
-    if (
-      isRepoSuccess &&
-      repoInfo &&
-      (messages.length === 0 ||
-        messages.every((msg) => msg.sender !== 'assistant'))
-    ) {
-      setMessages((prev) => {
-        const alreadyAdded = prev.some(
-          (m) =>
-            typeof m.message !== 'string' &&
-            (m.message as JSX.Element)?.props?.children?.[0]?.props
-              ?.children === repoInfo.name
-        );
-        if (alreadyAdded) return prev;
-        return [
-          ...prev,
-          {
-            sender: 'assistant',
-            message: (
-              <RepoBasicInfoCard repoInfo={repoInfo} showHeader={false} />
-            ),
-          },
-        ];
-      });
-    }
-  }, [isRepoSuccess, repoInfoResponse, messages]);
-
-  if (isRepoLoading || isHistoryLoading) {
+  if (isHistoryLoading) {
     return <ChatPageSkeleton />;
   }
 
@@ -297,15 +174,32 @@ export default function ChatPage() {
     );
   }
 
-  const actionMap: Record<string, string | undefined> = {
-    'Basic Analysis': 'basicAnalysis',
-    'Get File Structure': 'fileStructure',
-    'AI Analysis': 'aiAnalysis',
-  };
+  if (repoInfoResponse && repoInfoResponse.success === false) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        {repoInfoResponse.message || 'Repository not found.'}
+      </div>
+    );
+  }
+
+  const append = (...added: ChatItem[]) =>
+    setItems((prev) => [...prev, ...added]);
+
+  const assistantText = (content: string): ChatItem => ({
+    id: newChatItemId(),
+    role: 'assistant',
+    type: 'text',
+    content,
+  });
 
   const handleSend = async (msg: IChatRequest) => {
     if (streamAbortRef.current) return; // one answer at a time
-    setMessages((prev) => [...prev, { sender: 'user', message: msg.question }]);
+    append({
+      id: newChatItemId(),
+      role: 'user',
+      type: 'text',
+      content: msg.question,
+    });
 
     const ctrl = new AbortController();
     streamAbortRef.current = ctrl;
@@ -327,18 +221,13 @@ export default function ChatPage() {
         },
       });
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'assistant',
-          message: (
-            <div className="space-y-2">
-              <AIResponseFormatter answer={text} />
-              <ChatSources sources={sources} />
-            </div>
-          ),
-        },
-      ]);
+      append({
+        id: newChatItemId(),
+        role: 'assistant',
+        type: 'answer',
+        content: text,
+        sources,
+      });
     } catch (error) {
       // Page left or request cancelled: nothing to show, nothing saved
       if (ctrl.signal.aborted) return;
@@ -347,143 +236,68 @@ export default function ChatPage() {
         error instanceof ApiError || error instanceof Error
           ? error.message
           : 'Something went wrong while contacting AI service.';
-      setMessages((prev) => [...prev, { sender: 'assistant', message }]);
+      append(assistantText(message));
     } finally {
       if (streamAbortRef.current === ctrl) streamAbortRef.current = null;
       if (!ctrl.signal.aborted) setStreaming(null);
     }
   };
 
-  const handleAction = async (action: string) => {
-    // Add user's message
-    setMessages((prev) => [...prev, { sender: 'user', message: action }]);
+  // The quick actions show data we already have from getRepoInfo; no request
+  const handleAction = (action: string) => {
+    const userItem: ChatItem = {
+      id: newChatItemId(),
+      role: 'user',
+      type: 'text',
+      content: action,
+    };
 
-    // Add loading message with context-specific text
-    const loadingText = action.includes('File Structure')
-      ? 'Fetching file structure'
-      : action.includes('AI Analysis')
-      ? 'Running AI analysis'
-      : 'Processing request';
+    if (!overview) {
+      append(userItem, assistantText('Repository data is still loading.'));
+      return;
+    }
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        sender: 'assistant',
-        message: <LoadingMessage text={loadingText} />,
-        isLoading: true,
-      },
-    ]);
-
-    const info = actionMap[action];
-    try {
-      // Fetch data from API
-      const res = await Repository.getRepoInfo(repoId, info);
-      // Remove loading message
-      setMessages((prev) => prev.filter((m) => !m.isLoading));
-
-      if (!res) {
-        setMessages((prev) => [
-          ...prev,
-          { sender: 'assistant', message: '⚠️ Something went wrong.' },
-        ]);
-        return;
-      }
-
-      if (
-        info === 'aiAnalysis' &&
-        isAIAnalysisResponse(res) &&
-        (res.data.status === 'processing' || res.data.aiAnalysis === null)
-      ) {
-        Toast.info(
-          'Background processing is ongoing. Sorry for the delay, please try again after some time.'
-        );
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: 'assistant',
-            message: (
-              <div className="p-3 sm:p-4 text-xs sm:text-sm text-muted-foreground">
-                ⏳ AI analysis is still running. Please wait a bit and try
-                again. later.
-              </div>
-            ),
-          },
-        ]);
-        return;
-      }
-
-      // Handle processing state for File Structure
-      if (info === 'fileStructure' && isFileStructureRepoInfo(res)) {
-        if (!res.data.fileStructure) {
-          Toast.info(
-            'File structure is still being processed. Please try again after some time.'
-          );
-
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'assistant',
-              message: (
-                <div className="p-3 sm:p-4 text-xs sm:text-sm text-muted-foreground">
-                  ⏳ File structure extraction is still running. Please wait a
-                  bit and try again!
-                </div>
-              ),
-            },
-          ]);
-          return;
-        }
-      }
-
-      // Format assistant response nicely
-      let assistantMessage: JSX.Element | string = '';
-
-      if (isBasicRepoInfo(res)) {
-        const repo = res.data.basicInfo;
-        assistantMessage = <RepoBasicInfoCard repoInfo={repo} showHeader />;
-      } else if (isFileStructureRepoInfo(res)) {
-        assistantMessage = <FileTree fileStructure={res.data.fileStructure} />;
-      } else if (isAIAnalysisResponse(res)) {
-        const { aiAnalysis, status } = res.data;
-
-        assistantMessage = (
-          <RepoAIAnalysisCard
-            aiAnalysis={aiAnalysis}
-            status={status}
-            showHeader
-          />
-        );
-      } else if (isFullRepoInfo(res)) {
-        const repo = res.basicInfo;
-        assistantMessage = (
-          <div className="p-4 border rounded-xl bg-muted/30 space-y-2">
-            <h3 className="font-semibold text-primary">
-              📦 Full Repository Overview
-            </h3>
-            <p>{repo.name}</p>
-            <p>{repo.description}</p>
-          </div>
-        );
+    if (action === 'Basic Analysis') {
+      append(userItem, {
+        id: newChatItemId(),
+        role: 'assistant',
+        type: 'basicInfo',
+        payload: overview.basicInfo,
+      });
+    } else if (action === 'Get File Structure') {
+      if (overview.fileStructure) {
+        append(userItem, {
+          id: newChatItemId(),
+          role: 'assistant',
+          type: 'fileStructure',
+          payload: overview.fileStructure,
+        });
       } else {
-        Toast.info(
-          'Processing is underway. We appreciate your patience — please try again shortly.'
+        Toast.info('File structure is still being processed.');
+        append(
+          userItem,
+          assistantText(
+            '⏳ File structure extraction has not finished yet. Check the progress above.'
+          )
         );
-        assistantMessage = 'Please wait a bit and try again!';
       }
-
-      setMessages((prev) => [
-        ...prev,
-        { sender: 'assistant', message: assistantMessage },
-      ]);
-    } catch (error) {
-      // Remove loading message on error
-      setMessages((prev) => prev.filter((m) => !m.isLoading));
-      setMessages((prev) => [
-        ...prev,
-        { sender: 'assistant', message: 'Failed to fetch repository data.' },
-      ]);
-      console.log(error);
+    } else if (action === 'AI Analysis') {
+      if (overview.aiAnalysis) {
+        append(userItem, {
+          id: newChatItemId(),
+          role: 'assistant',
+          type: 'aiAnalysis',
+          payload: overview.aiAnalysis,
+        });
+      } else {
+        Toast.info('AI analysis is still being processed.');
+        append(
+          userItem,
+          assistantText(
+            '⏳ AI analysis has not finished yet. Check the progress above.'
+          )
+        );
+      }
     }
   };
 
@@ -500,6 +314,15 @@ export default function ChatPage() {
       >
         <RepoProgress status={repoStatus} />
 
+        {overview?.basicInfo && (
+          <ChatMessage
+            sender="assistant"
+            message={
+              <RepoBasicInfoCard repoInfo={overview.basicInfo} showHeader={false} />
+            }
+          />
+        )}
+
         {hasMore && (
           <div className="flex justify-center">
             <CustomButton
@@ -514,24 +337,24 @@ export default function ChatPage() {
           </div>
         )}
 
-        {olderMessages.map((m, i) => (
+        {olderItems.map((item) => (
           <ChatMessage
-            key={m.id ?? `older-${i}`}
-            sender={m.sender}
-            message={m.message}
+            key={item.id}
+            sender={item.role}
+            message={renderChatItem(item)}
           />
         ))}
 
         <AnimatePresence initial={false}>
-          {messages.map((m, i) => (
+          {items.map((item) => (
             <motion.div
-              key={i}
+              key={item.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <ChatMessage sender={m.sender} message={m.message} />
+              <ChatMessage sender={item.role} message={renderChatItem(item)} />
             </motion.div>
           ))}
         </AnimatePresence>
