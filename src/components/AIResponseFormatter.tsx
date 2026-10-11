@@ -1,169 +1,155 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
+import ReactMarkdown, { Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Check, Copy } from 'lucide-react';
+import { Toast } from '@/lib/Toast';
 
 interface AIResponseFormatterProps {
   answer: string;
 }
 
-export const AIResponseFormatter: React.FC<AIResponseFormatterProps> = ({
-  answer,
-}) => {
-  // Function to parse markdown-style formatting (bold, italic, etc.)
-  const parseMarkdownText = (text: string): React.ReactNode[] => {
-    const parts: React.ReactNode[] = [];
-    // Regex to match **bold**, *italic*, and other patterns
-    const markdownRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+function CodeBlock({ language, code }: { language: string; code: string }) {
+  const [copied, setCopied] = useState(false);
 
-    let lastIndex = 0;
-    let match;
-    let keyIndex = 0;
-
-    while ((match = markdownRegex.exec(text)) !== null) {
-      // Add text before markdown
-      if (match.index > lastIndex) {
-        parts.push(
-          <span key={`plain-${keyIndex++}`}>
-            {text.slice(lastIndex, match.index)}
-          </span>
-        );
-      }
-
-      const matchedText = match[0];
-
-      // Handle **bold**
-      if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
-        parts.push(
-          <strong
-            key={`bold-${keyIndex++}`}
-            className="font-semibold text-foreground"
-          >
-            {matchedText.slice(2, -2)}
-          </strong>
-        );
-      }
-      // Handle *italic*
-      else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
-        parts.push(
-          <em key={`italic-${keyIndex++}`} className="italic">
-            {matchedText.slice(1, -1)}
-          </em>
-        );
-      }
-      // Handle `inline code`
-      else if (matchedText.startsWith('`') && matchedText.endsWith('`')) {
-        parts.push(
-          <code
-            key={`inline-code-${keyIndex++}`}
-            className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono text-sm"
-          >
-            {matchedText.slice(1, -1)}
-          </code>
-        );
-      }
-
-      lastIndex = match.index + matchedText.length;
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      Toast.error('Could not copy to clipboard');
     }
-
-    // Add remaining text
-    if (lastIndex < text.length) {
-      parts.push(
-        <span key={`plain-${keyIndex++}`}>{text.slice(lastIndex)}</span>
-      );
-    }
-
-    return parts.length > 0 ? parts : [text];
-  };
-
-  // Function to parse text and extract code blocks
-  const parseContent = (text: string) => {
-    const parts: React.ReactNode[] = [];
-    // Match code blocks with optional language identifier
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-
-    let lastIndex = 0;
-    let match;
-
-    while ((match = codeBlockRegex.exec(text)) !== null) {
-      // Add text before code block (with markdown parsing)
-      if (match.index > lastIndex) {
-        const textBefore = text.slice(lastIndex, match.index);
-        parts.push(
-          <span key={`text-${lastIndex}`} className="whitespace-pre-wrap">
-            {parseMarkdownText(textBefore)}
-          </span>
-        );
-      }
-
-      // Add code block
-      const language = match[1] || 'text';
-      const code = match[2].trim();
-
-      parts.push(
-        <div
-          key={`code-${match.index}`}
-          className="my-2 rounded-lg overflow-hidden border border-border"
-        >
-          <div className="px-4 py-2 text-xs font-mono border-b flex items-center justify-between bg-zinc-800 text-zinc-300 border-zinc-700">
-            <span className="font-semibold">{language}</span>
-          </div>
-          <SyntaxHighlighter
-            language={language}
-            style={vscDarkPlus} // always dark theme
-            customStyle={{
-              margin: 0,
-              padding: '1rem',
-              fontSize: '0.875rem',
-              lineHeight: '1.5',
-              background: '#1e1e1e', // force dark background
-            }}
-            showLineNumbers
-          >
-            {code}
-          </SyntaxHighlighter>
-        </div>
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Add remaining text (with markdown parsing)
-    if (lastIndex < text.length) {
-      const remainingText = text.slice(lastIndex);
-      parts.push(
-        <span key={`text-${lastIndex}`} className="whitespace-pre-wrap">
-          {parseMarkdownText(remainingText)}
-        </span>
-      );
-    }
-
-    return parts.length > 0 ? (
-      parts
-    ) : (
-      <span className="whitespace-pre-wrap">{parseMarkdownText(text)}</span>
-    );
   };
 
   return (
-    <div className="p-2 space-y-4">
-      <div className="text-sm leading-relaxed text-foreground">
-        {parseContent(answer)}
+    <div className="my-2 rounded-lg overflow-hidden border border-border">
+      <div className="px-4 py-2 text-xs font-mono border-b flex items-center justify-between bg-zinc-800 text-zinc-300 border-zinc-700">
+        <span className="font-semibold">{language}</span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-700 transition-colors"
+          aria-label="Copy code"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3.5 w-3.5" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3.5 w-3.5" /> Copy
+            </>
+          )}
+        </button>
       </div>
-
-      {/* {sources && sources.length > 0 && (
-        <div className="pt-3 border-t border-border">
-          <p className="font-medium text-foreground mb-2 flex items-center gap-2">
-            <span>📚</span> Sources:
-          </p>
-          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-2">
-            {sources.map((src: string, i: number) => (
-              <li key={i} className="leading-relaxed">
-                {src}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )} */}
+      <SyntaxHighlighter
+        language={language}
+        style={vscDarkPlus} // always dark theme
+        customStyle={{
+          margin: 0,
+          padding: '1rem',
+          fontSize: '0.875rem',
+          lineHeight: '1.5',
+          background: '#1e1e1e', // force dark background
+        }}
+        showLineNumbers
+      >
+        {code}
+      </SyntaxHighlighter>
     </div>
   );
+}
+
+// Defined once so react-markdown gets stable component references
+const markdownComponents: Components = {
+  // Fenced blocks arrive as <pre><code class="language-x">; inline code is
+  // a bare <code> handled below.
+  pre({ children }) {
+    const child = React.Children.toArray(children)[0];
+    if (React.isValidElement<{ className?: string; children?: React.ReactNode }>(child)) {
+      const language =
+        /language-([\w-]+)/.exec(child.props.className ?? '')?.[1] ?? 'text';
+      const code = String(child.props.children ?? '').replace(/\n$/, '');
+      return <CodeBlock language={language} code={code} />;
+    }
+    return <pre>{children}</pre>;
+  },
+  code({ children }) {
+    return (
+      <code className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono text-sm break-words">
+        {children}
+      </code>
+    );
+  },
+  a({ href, children }) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary underline underline-offset-2 hover:opacity-80"
+      >
+        {children}
+      </a>
+    );
+  },
+  p: ({ children }) => <p className="my-2 first:mt-0 last:mb-0">{children}</p>,
+  strong: ({ children }) => (
+    <strong className="font-semibold text-foreground">{children}</strong>
+  ),
+  ul: ({ children }) => (
+    <ul className="my-2 list-disc pl-5 space-y-1">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="my-2 list-decimal pl-5 space-y-1">{children}</ol>
+  ),
+  h1: ({ children }) => (
+    <h1 className="mt-4 mb-2 text-lg font-semibold">{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="mt-4 mb-2 text-base font-semibold">{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="mt-3 mb-1 text-sm font-semibold">{children}</h3>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="my-2 border-l-4 border-border pl-3 text-muted-foreground">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="my-3 border-border" />,
+  table: ({ children }) => (
+    <div className="my-2 overflow-x-auto">
+      <table className="w-full border-collapse text-left text-sm">
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th className="border border-border bg-muted px-2 py-1 font-semibold">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border border-border px-2 py-1">{children}</td>
+  ),
 };
+
+export const AIResponseFormatter = React.memo(function AIResponseFormatter({
+  answer,
+}: AIResponseFormatterProps) {
+  return (
+    <div className="p-2 text-sm leading-relaxed text-foreground whitespace-normal">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={markdownComponents}
+      >
+        {answer}
+      </ReactMarkdown>
+    </div>
+  );
+});
