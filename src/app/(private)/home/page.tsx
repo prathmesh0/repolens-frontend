@@ -28,19 +28,15 @@ export default function HomePage() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch {
-          console.error('Failed to parse user from localStorage');
-        }
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        console.error('Failed to parse user from localStorage');
       }
-      setPageLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    }
+    setPageLoading(false);
   }, []);
 
   // Detect Theme

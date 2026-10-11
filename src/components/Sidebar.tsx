@@ -88,7 +88,7 @@ function Sidebar({ isOpen, isMobile, toggleSidebar }: ISidebar) {
   return (
     <aside
       className={cn(
-        `${isMobile} ? 'fixed' : 'relative'`,
+        isMobile ? 'fixed z-30' : 'relative',
         ' h-full bg-card border-r border-border transition-all duration-300 flex flex-col',
         isOpen ? 'w-64' : isMobile ? 'w-0' : 'w-16',
         !isOpen && isMobile ? 'invisible' : 'visible'

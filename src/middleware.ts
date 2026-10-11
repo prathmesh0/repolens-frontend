@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export function middleware(req: NextRequest) {
   const token = req.cookies.get('accessToken');
 
-  const protectedRoutes = ['/dashboard', '/profile'];
+  const protectedRoutes = ['/home', '/chat'];
   const isProtected = protectedRoutes.some((path) =>
     req.nextUrl.pathname.startsWith(path)
   );
@@ -16,5 +16,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/profile/:path*'],
+  matcher: ['/home/:path*', '/chat/:path*'],
 };

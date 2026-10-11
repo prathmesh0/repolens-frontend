@@ -7,85 +7,97 @@ import {
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-let isRefreshing = false;
-let pendingRequests: Array<() => void> = [];
+// 401s from these endpoints are real answers (bad credentials, dead refresh
+// token), not an expired access token, so they must not trigger a refresh.
+const NO_REFRESH_PATHS = [
+  '/users/login',
+  '/users/register',
+  '/users/refresh-token',
+  '/users/logout',
+];
 
-async function refreshAccessToken() {
-  try {
-    const refreshToken = getFromLocalStorage('refreshToken');
-    if (!refreshToken) throw new Error('No refresh token');
+// One refresh in flight at a time; every 401 awaits the same promise.
+let refreshPromise: Promise<string> | null = null;
 
-    const response = await fetch(`${BASE_URL}/users/refresh-token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // body: JSON.stringify({ refreshToken }),
-      credentials: 'include',
-    });
-
-    if (!response.ok) throw new Error('Refresh token expired');
-
-    const data = await response.json();
-
-    const { accessToken, refreshToken: newRefreshToken } = data;
-    saveToLocalStorage('token', accessToken);
-    saveToLocalStorage('refreshToken', newRefreshToken);
-
-    return accessToken;
-  } catch (error) {
-    clearAuthStorage();
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
-    throw error;
+function redirectToLogin() {
+  clearAuthStorage();
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.href = '/login';
   }
+}
+
+async function refreshAccessToken(): Promise<string> {
+  const refreshToken = getFromLocalStorage('refreshToken');
+  if (!refreshToken) throw new Error('No refresh token');
+
+  const response = await fetch(`${BASE_URL}/users/refresh-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw new Error('Refresh token expired');
+
+  // Backend envelope: { success, message, data: { accessToken, refreshToken } }
+  const body = await response.json();
+  const accessToken = body?.data?.accessToken;
+  const newRefreshToken = body?.data?.refreshToken;
+  if (!accessToken || !newRefreshToken) {
+    throw new Error('Invalid refresh response');
+  }
+
+  saveToLocalStorage('token', accessToken);
+  saveToLocalStorage('refreshToken', newRefreshToken);
+  return accessToken;
+}
+
+function getRefreshedToken(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 
 export async function enhancedFetch(
   input: RequestInfo,
   init?: RequestInit
 ): Promise<Response> {
-  // Add Authorization header if token exists
-  let token = getFromLocalStorage('token');
-  const headers = new Headers(init?.headers || {});
-
-  if (token) headers.append('Authorization', `Bearer ${token}`);
-
   const finalUrl =
     typeof input === 'string' && !input.startsWith('http')
       ? `${BASE_URL}${input}`
       : input;
 
-  const response = await fetch(finalUrl, {
-    ...init,
-    headers,
-    cache: 'no-cache',
-  });
-
-  // Handle unauthorized token
-  if (response.status === 401) {
-    if (!isRefreshing) {
-      isRefreshing = true;
-      try {
-        token = await refreshAccessToken();
-        isRefreshing = false;
-        // Retry all pending requests
-        pendingRequests.forEach((callback) => callback());
-        pendingRequests = [];
-      } catch (e) {
-        isRefreshing = false;
-        // refresh token failed, already redirected to login
-        throw e;
-      }
-    }
-    // Queue this request until token refresh completed
-    return new Promise<Response>((resolve, reject) => {
-      pendingRequests.push(() => {
-        headers.set('Authorization', `Bearer ${token}`);
-        fetch(finalUrl, { ...init, headers, cache: 'no-cache' })
-          .then(resolve)
-          .catch(reject);
-      });
+  const send = (token: string | null) => {
+    const headers = new Headers(init?.headers || {});
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    return fetch(finalUrl, {
+      ...init,
+      headers,
+      credentials: 'include',
+      cache: 'no-cache',
     });
+  };
+
+  const response = await send(getFromLocalStorage('token'));
+
+  const url = typeof finalUrl === 'string' ? finalUrl : finalUrl.url;
+  if (response.status !== 401 || NO_REFRESH_PATHS.some((p) => url.includes(p))) {
+    return response;
   }
-  return response;
+
+  let newToken: string;
+  try {
+    newToken = await getRefreshedToken();
+  } catch (e) {
+    redirectToLogin();
+    throw e;
+  }
+
+  // Retry once with the fresh token; a second 401 means the session is gone.
+  const retry = await send(newToken);
+  if (retry.status === 401) redirectToLogin();
+  return retry;
 }

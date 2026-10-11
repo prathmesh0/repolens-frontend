@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '@/lib/apiMethods';
+import { ApiError, apiGet, apiPost } from '@/lib/apiMethods';
 import { BODY, ENPOINTS } from '@/lib/Config';
 import { ApiBaseResponse } from '@/types/api';
 import { ILogin } from '@/types/auth';
@@ -12,6 +12,13 @@ import {
   IRepoChatData,
 } from '@/types/chat';
 import { IAnalyse, IRepositoryResponse, RepoHistoryItem } from '@/types/repo';
+
+// Backend errors arrive as { success:false, message, data:null }. Hand that
+// body back so callers keep reading `res.message` / `res.success`.
+function errorBody<T>(error: unknown): T | undefined {
+  if (error instanceof ApiError && error.body) return error.body as T;
+  return undefined;
+}
 
 export class User {
   public static async handleLogin(body: ILogin) {
@@ -53,6 +60,7 @@ export class Repository {
       return response;
     } catch (error) {
       console.error('ERROR: analyseRepository', error);
+      return errorBody<IRepositoryResponse>(error);
     }
   }
 
@@ -79,7 +87,8 @@ export class Repository {
       >(url);
       return response;
     } catch (error) {
-      console.error('ERROR: analyseRepository', error);
+      console.error('ERROR: getRepoInfo', error);
+      return errorBody<IBasicRepoInfo>(error);
     }
   }
 }
@@ -97,6 +106,7 @@ export class ChatService {
       return response;
     } catch (error) {
       console.error('ERROR: chatwithRepoRequest', error);
+      return errorBody<ChatAnalysisResponse>(error);
     }
   }
 
@@ -110,6 +120,7 @@ export class ChatService {
       return response;
     } catch (error) {
       console.error('ERROR: chatHistory', error);
+      return errorBody<IRepoChatData>(error);
     }
   }
 }
