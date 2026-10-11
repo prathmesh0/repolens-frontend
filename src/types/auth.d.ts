@@ -23,6 +23,13 @@ export interface ILoginResponse {
   refreshToken: string;
 }
 
+export interface IMe {
+  _id: string;
+  username: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface ILogoutResponse {
   [key: string]: never;
 }

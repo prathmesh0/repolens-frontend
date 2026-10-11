@@ -29,6 +29,7 @@ export const clearAuthStorage = () => {
   removeFromLocalStorage('token');
   removeFromLocalStorage('refreshToken');
   removeFromLocalStorage('user');
+  removeFromLocalStorage('auth'); // legacy key
 };
 
 export function parseJSONSafe(content: string) {

@@ -13,8 +13,8 @@ import {
 
 import { ThemeToggle } from './ThemeToggle';
 
-import { useEffect, useState } from 'react';
 import { useAppContext } from '@/providers/AppContextProvider';
+import { useMe } from '@/lib/useMe';
 
 interface IHeaderProps {
   toggleSidebar: () => void;
@@ -23,20 +23,7 @@ interface IHeaderProps {
 
 export default function Header({ toggleSidebar, isMobile }: IHeaderProps) {
   const { handleLogout } = useAppContext();
-  const [user, setUser] = useState<{ username: string; email: string } | null>(
-    null
-  );
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        console.error('Failed to parse user from localStorage');
-      }
-    }
-  }, []);
+  const { data: user } = useMe();
 
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/60 backdrop-blur-md shadow-sm sticky top-0 z-10">

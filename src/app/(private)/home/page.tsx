@@ -13,31 +13,16 @@ import { Toast } from '@/lib/Toast';
 import { IAnalyse } from '@/types/repo';
 import CustomInput from '@/components/CustomInput';
 import CustomButton from '@/components/CustomButton';
-import { PageSkeleton } from '@/components/HomePageSkelaton';
+import { useMe } from '@/lib/useMe';
 import Particles from '@/components/Particles';
 import { capitalizeFirstLetter } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 export default function HomePage() {
-  const [user, setUser] = useState<{ username: string; email: string } | null>(
-    null
-  );
+  const { data: user } = useMe();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [pageLoading, setPageLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        console.error('Failed to parse user from localStorage');
-      }
-    }
-    setPageLoading(false);
-  }, []);
 
   // Detect Theme
   useEffect(() => {
@@ -67,10 +52,17 @@ export default function HomePage() {
       setLoading(false);
       if (res?.success || res?.statusCode === 201) {
         const repoInfo = res.data.basicInfo;
-        Toast.success(
-          `Analysis started! This might take a few minutes to complete.`,
-          { duration: 5000 }
-        );
+        // 201 = new run queued; 200 = a run is already live for this repo.
+        if (res.statusCode === 200) {
+          Toast.info('This repository is already being analysed.', {
+            duration: 5000,
+          });
+        } else {
+          Toast.success(
+            `Analysis started! This might take a few minutes to complete.`,
+            { duration: 5000 }
+          );
+        }
         queryClient.invalidateQueries({ queryKey: ['repoHistory'] });
         // Navigate to chat page after short delay
         router.push(`/chat/${repoInfo._id}`);
@@ -79,10 +71,6 @@ export default function HomePage() {
       }
     },
   });
-
-  if (pageLoading) {
-    return <PageSkeleton />;
-  }
 
   const particleColors =
     theme === 'dark' ? ['#ffffff'] : ['#e6b347', '#4a9fd8', '#666666'];

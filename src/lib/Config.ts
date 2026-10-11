@@ -9,6 +9,7 @@ export const ENPOINTS = {
     LOGIN: `${API_BASE}/users/login`,
     REGISTER: `${API_BASE}/users/register`,
     LOGOUT: `${API_BASE}/users/logout`,
+    ME: `${API_BASE}/users/me`,
     REFRESH_TOKEN: `${API_BASE}/users/refresh-token`,
     REPOHISTORY: (query?: string) =>
       query

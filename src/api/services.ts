@@ -1,7 +1,7 @@
 import { ApiError, apiGet, apiPost } from '@/lib/apiMethods';
 import { BODY, ENPOINTS } from '@/lib/Config';
 import { ApiBaseResponse } from '@/types/api';
-import { ILogin } from '@/types/auth';
+import { ILogin, IMe } from '@/types/auth';
 import {
   ChatAnalysisResponse,
   IAIAnalysisResponse,
@@ -21,6 +21,13 @@ function errorBody<T>(error: unknown): T | undefined {
 }
 
 export class User {
+  // Not wrapped in try/catch: the auth gate needs the error to tell
+  // "logged out" (401) from a transient failure.
+  public static async getMe(): Promise<IMe> {
+    const response = await apiGet<ApiBaseResponse<IMe>>(ENPOINTS.USERS.ME);
+    return response.data;
+  }
+
   public static async handleLogin(body: ILogin) {
     try {
       const response = await apiPost(
