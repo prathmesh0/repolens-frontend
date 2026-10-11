@@ -24,6 +24,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AIResponseFormatter } from '@/components/AIResponseFormatter';
 import { LoadingMessage } from '@/components/LoadingMessage';
 import { Toast } from '@/lib/Toast';
+import RepoProgress from '@/components/RepoProgress';
+import { useRepoStatus } from '@/lib/useRepoStatus';
 
 type ChatMessageType = {
   sender: 'user' | 'assistant';
@@ -68,6 +70,9 @@ export default function ChatPage() {
   const { repoId } = useParams<{ repoId: string }>();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { status: repoStatus } = useRepoStatus(repoId);
+  // Chat only works once embeddings are ready
+  const chatReady = repoStatus?.statuses.embeddingStatus === 'ready';
 
   const {
     data: chatHistory,
@@ -431,6 +436,8 @@ export default function ChatPage() {
           scrollbarColor: 'var(--muted) transparent',
         }}
       >
+        <RepoProgress status={repoStatus} />
+
         <AnimatePresence initial={false}>
           {messages.map((m, i) => (
             <motion.div
@@ -451,7 +458,15 @@ export default function ChatPage() {
       {/* Chat Actions + Input */}
       <div className="sticky bottom-0 left-0 right-0 bg-background px-4 py-2">
         <ChatActionsBar onSelect={handleAction} />
-        <ChatInput onSend={handleSend} />
+        <ChatInput
+          onSend={handleSend}
+          disabled={!chatReady}
+          placeholder={
+            chatReady
+              ? 'Ask your question...'
+              : 'Chat is available once the repository has finished indexing...'
+          }
+        />
       </div>
     </main>
   );

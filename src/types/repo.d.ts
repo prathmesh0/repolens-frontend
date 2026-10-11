@@ -48,3 +48,25 @@ export interface RepoHistoryItem {
   chatId: string | null;
   lastActive: string | null;
 }
+
+export type RepoStageStatus = 'pending' | 'processing' | 'ready' | 'failed';
+
+export interface IRepoStatus {
+  statuses: {
+    fileStructureStatus: RepoStageStatus;
+    aiStatus: RepoStageStatus;
+    embeddingStatus: RepoStageStatus;
+  };
+  progress: {
+    percent: number;
+    fileStructure: { done: number; total: number };
+    embedding: { done: number; total: number };
+  };
+  statusErrors: {
+    fileStructure?: string;
+    ai?: string;
+    embedding?: string;
+  };
+  job: { status: 'queued' | 'running'; position?: number; attempts: number } | null;
+  finished?: boolean;
+}

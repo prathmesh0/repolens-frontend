@@ -20,6 +20,8 @@ export const ENPOINTS = {
   REPOSITORY: {
     ANALYSE: `${API_BASE}/repository/analyse`,
     GET_REPO_INFO: (_id: string) => `${API_BASE}/repository/getRepoInfo/${_id}`,
+    STATUS_STREAM: (_id: string) =>
+      `${API_BASE}/repository/status-stream/${_id}`,
   },
   CHAT: {
     CHAT_WITH_REPO: (_id: string) => `${API_BASE}/aiChat/chat/${_id}`,
