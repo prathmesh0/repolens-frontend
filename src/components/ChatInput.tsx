@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { SendHorizonal } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import { IChatRequest } from '@/types/chat';
 import { cn } from '@/lib/utils';
 
@@ -39,51 +39,39 @@ export default function ChatInput({
   }, [input]);
 
   return (
-    <div className="bg-background p-3 w-full flex justify-center items-center">
-      <div className="relative w-full">
-        {/* Scrollable Wrapper */}
-        <div
-          className={cn(
-            'relative border border-input rounded-xl bg-background flex items-end',
-            'focus-within:ring-1 focus-within:ring-ring'
-          )}
-        >
-          {/* Textarea */}
-          <Textarea
-            placeholder={placeholder}
-            disabled={disabled}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) =>
-              e.key === 'Enter' &&
-              !e.shiftKey &&
-              isValid &&
-              (e.preventDefault(), handleSend())
-            }
-            className={cn(
-              'pr-14 resize-none min-h-[44px] max-h-[180px] overflow-y-auto rounded-xl custom-scrollbar',
-              'border border-input bg-background focus-visible:ring-1 focus-visible:ring-ring text-sm'
-            )}
-            rows={1}
-          />
+    <div
+      className={cn(
+        'flex w-full items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-lg',
+        'transition-shadow duration-200 focus-within:ring-4 focus-within:ring-primary/15',
+        disabled && 'opacity-80'
+      )}
+    >
+      <Textarea
+        ref={textareaRef}
+        placeholder={placeholder}
+        value={input}
+        disabled={disabled}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) =>
+          e.key === 'Enter' &&
+          !e.shiftKey &&
+          isValid &&
+          (e.preventDefault(), handleSend())
+        }
+        className="custom-scrollbar max-h-[180px] min-h-[40px] flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-base shadow-none focus-visible:ring-0 md:text-sm dark:bg-transparent"
+        rows={1}
+      />
 
-          {/* Send Button */}
-          <div className="absolute bottom-2 right-2">
-            <Button
-              type="button"
-              size="icon"
-              onClick={handleSend}
-              disabled={!isValid}
-              className={cn(
-                'h-8 w-8 rounded-full transition-opacity shadow-sm',
-                !isValid && 'opacity-50 cursor-not-allowed'
-              )}
-            >
-              <SendHorizonal className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Button
+        type="button"
+        size="icon"
+        onClick={handleSend}
+        disabled={!isValid}
+        aria-label="Send message"
+        className="h-10 w-10 shrink-0 rounded-xl"
+      >
+        <ArrowUp className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

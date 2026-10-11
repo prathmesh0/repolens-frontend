@@ -11,7 +11,11 @@ interface RepoProgressProps {
 }
 
 const STAGES = [
-  { key: 'fileStructureStatus', errorKey: 'fileStructure', label: 'File structure' },
+  {
+    key: 'fileStructureStatus',
+    errorKey: 'fileStructure',
+    label: 'File structure',
+  },
   { key: 'aiStatus', errorKey: 'ai', label: 'AI analysis' },
   { key: 'embeddingStatus', errorKey: 'embedding', label: 'Embeddings' },
 ] as const;
@@ -38,7 +42,7 @@ export default function RepoProgress({ status }: RepoProgressProps) {
   const percent = Math.max(0, Math.min(100, progress?.percent ?? 0));
 
   return (
-    <div className="mx-auto w-full max-w-3xl rounded-xl border border-border bg-card/60 p-4 space-y-3">
+    <div className="w-full space-y-3 rounded-2xl border border-border bg-card p-4 shadow-xs">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium text-foreground">
           {anyFailed ? 'Analysis failed' : 'Analysing repository'}
@@ -50,14 +54,14 @@ export default function RepoProgress({ status }: RepoProgressProps) {
 
       {!anyFailed && (
         <div
-          className="h-2 w-full overflow-hidden rounded-full bg-muted"
+          className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
           role="progressbar"
           aria-valuenow={Math.round(percent)}
           aria-valuemin={0}
           aria-valuemax={100}
         >
           <div
-            className="h-full bg-primary transition-all duration-500"
+            className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-500 ease-product"
             style={{ width: `${percent}%` }}
           />
         </div>

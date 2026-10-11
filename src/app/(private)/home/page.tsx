@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { Search } from 'lucide-react';
+import { useState } from 'react';
+import {
+  FolderTree,
+  Loader2,
+  MessageSquare,
+  Search,
+  Sparkles,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useFormik } from 'formik';
 import { BODY } from '@/lib/Config';
@@ -11,42 +16,36 @@ import { useRouter } from 'next/navigation';
 import { Repository } from '@/api/services';
 import { Toast } from '@/lib/Toast';
 import { IAnalyse } from '@/types/repo';
-import CustomInput from '@/components/CustomInput';
+import { Input } from '@/components/ui/input';
 import CustomButton from '@/components/CustomButton';
 import { useMe } from '@/lib/useMe';
-import dynamic from 'next/dynamic';
 import { capitalizeFirstLetter } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
-// WebGL background; keep ogl out of the initial bundle and off the server
-const Particles = dynamic(() => import('@/components/Particles'), {
-  ssr: false,
-});
+import { fadeUp, stagger } from '@/lib/motion';
+
+const FEATURES = [
+  {
+    icon: Sparkles,
+    title: 'AI Repository Insights',
+    desc: "Get instant, intelligent breakdowns of your repo's structure and performance metrics using cutting-edge AI.",
+  },
+  {
+    icon: FolderTree,
+    title: 'File Structure Visualizer',
+    desc: 'Explore your project’s file hierarchy with clean, intuitive diagrams enriched with smart recommendations.',
+  },
+  {
+    icon: MessageSquare,
+    title: 'Chat with AI Assistant',
+    desc: 'Interact directly with an AI trained to understand your project. Ask questions, get suggestions, and debug faster.',
+  },
+];
 
 export default function HomePage() {
   const { data: user } = useMe();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const queryClient = useQueryClient();
-
-  // Detect Theme
-  useEffect(() => {
-    const detectTheme = () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(isDark ? 'dark' : 'light');
-    };
-
-    detectTheme();
-
-    // Watch for theme changes
-    const observer = new MutationObserver(detectTheme);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    });
-
-    return () => observer.disconnect();
-  }, []);
 
   const formik = useFormik<IAnalyse>({
     initialValues: BODY.REPOSITORY.ANALYSE(),
@@ -77,143 +76,134 @@ export default function HomePage() {
     },
   });
 
-  const particleColors =
-    theme === 'dark' ? ['#ffffff'] : ['#e6b347', '#4a9fd8', '#666666'];
+  const urlError = formik.touched.url ? (formik.errors.url as string) : '';
 
   return (
-    <div className="relative min-h-full w-full">
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <Particles
-          particleColors={particleColors}
-          particleCount={200}
-          particleSpread={10}
-          speed={0.1}
-          particleBaseSize={150}
-          moveParticlesOnHover={true}
-          alphaParticles={false}
-          disableRotation={false}
-          className="w-full h-full"
-        />
-      </div>
-      <main className="relative z-10 min-h-full w-full flex flex-col items-center justify-between text-foreground overflow-x-hidden hide-scrollbar">
-        {/* Hero Section */}
-        <section className="flex flex-col items-center text-center mt-12 sm:mt-16 md:mt-20 mb-8 sm:mb-10 px-4 space-y-4 sm:space-y-6 max-w-4xl w-full">
-          <motion.h1
-            initial={{ opacity: 0, y: -30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight bg-gradient-to-r from-[oklch(0.6716_0.1368_48.513)] to-[oklch(0.536_0.0398_196.028)] text-transparent bg-clip-text leading-tight"
+    <div className="relative flex min-h-full w-full flex-col overflow-hidden">
+      {/* Decorative backdrop */}
+      <div
+        className="bg-hero-glow pointer-events-none absolute inset-x-0 top-0 h-[520px]"
+        aria-hidden
+      />
+      <div
+        className="bg-grid pointer-events-none absolute inset-x-0 top-0 h-[520px]"
+        aria-hidden
+      />
+
+      <main className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center px-4 sm:px-6">
+        {/* Hero */}
+        <motion.section
+          variants={stagger(0.08)}
+          initial="hidden"
+          animate="show"
+          className="flex w-full max-w-3xl flex-col items-center gap-5 pt-14 text-center sm:pt-20 md:pt-28"
+        >
+          <motion.div
+            variants={fadeUp}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur"
           >
-            Welcome{user ? `, ${capitalizeFirstLetter(user.username)}` : ''} to
-            Repolens
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            AI-powered repository analysis
+          </motion.div>
+
+          <motion.h1
+            variants={fadeUp}
+            className="text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl md:text-6xl"
+          >
+            Welcome{user ? `, ${capitalizeFirstLetter(user.username)}` : ''} to{' '}
+            <span className="text-gradient-brand">Repolens</span>
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-            className="max-w-2xl text-base sm:text-lg text-muted-foreground"
+            variants={fadeUp}
+            className="max-w-2xl text-base text-muted-foreground sm:text-lg"
           >
             Repolens empowers developers to analyze and understand their
             repositories using AI. Explore your codebase, view insightful
             reports, and chat with your intelligent assistant — all in one
             place.
           </motion.p>
-        </section>
 
-        {/* Input + Button Section */}
-        <motion.form
-          onSubmit={formik.handleSubmit}
-          initial={{ opacity: 0, y: 25 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mt-4 sm:mt-6 mb-12 sm:mb-16 md:mb-20 w-full max-w-md px-4"
-        >
-          <div className="flex flex-col sm:flex-row w-full items-start sm:items-start gap-3">
-            <div className="flex-1 w-full">
-              <CustomInput
-                type="text"
-                placeholder="Enter your repository URL..."
-                value={formik.values.url}
-                name="url"
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={formik.touched.url ? (formik.errors.url as string) : ''}
-                className="h-10 "
-              />
+          {/* Analyse bar */}
+          <motion.form
+            variants={fadeUp}
+            onSubmit={formik.handleSubmit}
+            className="mt-4 w-full max-w-xl"
+          >
+            <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card/80 p-2 shadow-lg backdrop-blur transition-shadow duration-200 focus-within:ring-4 focus-within:ring-primary/15 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Enter your repository URL..."
+                  value={formik.values.url}
+                  name="url"
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  aria-invalid={!!urlError}
+                  className="h-11 border-0 bg-transparent pl-9 shadow-none focus-visible:ring-0 dark:bg-transparent"
+                />
+              </div>
+
+              <CustomButton
+                type="submit"
+                disabled={loading || !formik.values.url || !!formik.errors.url}
+                className="h-11 w-full whitespace-nowrap px-5 sm:w-auto"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Analysing...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    Analyse
+                  </>
+                )}
+              </CustomButton>
             </div>
+            {urlError && (
+              <p className="mt-2 text-left text-xs text-destructive">
+                {urlError}
+              </p>
+            )}
+          </motion.form>
+        </motion.section>
 
-            <CustomButton
-              type="submit"
-              disabled={loading || !formik.values.url || !!formik.errors.url}
-              className="flex items-center gap-2 bg-primary text-primary-foreground  h-10 px-4 py-3 sm:px-6 rounded-lg hover:opacity-90 transition-all duration-200 w-full sm:w-auto whitespace-nowrap"
-            >
-              {loading ? (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="animate-pulse text-sm sm:text-base"
-                >
-                  Analysing...
-                </motion.span>
-              ) : (
-                <>
-                  <Search className="w-4 h-4" />
-                  Analyse
-                </>
-              )}
-            </CustomButton>
-          </div>
-        </motion.form>
-
-        {/* Animated Features Section */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 px-4 sm:px-6 mb-12 sm:mb-16 md:mb-20 max-w-6xl w-full">
-          {[
-            {
-              title: 'AI Repository Insights',
-              desc: "Get instant, intelligent breakdowns of your repo's structure and performance metrics using cutting-edge AI.",
-            },
-            {
-              title: 'File Structure Visualizer',
-              desc: 'Explore your project’s file hierarchy with clean, intuitive diagrams enriched with smart recommendations.',
-            },
-            {
-              title: 'Chat with AI Assistant',
-              desc: 'Interact directly with an AI trained to understand your project. Ask questions, get suggestions, and debug faster.',
-            },
-          ].map((feature, i) => (
+        {/* Features */}
+        <motion.section
+          variants={stagger(0.1)}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-60px' }}
+          className="mb-16 mt-16 grid w-full grid-cols-1 gap-4 sm:mt-20 md:grid-cols-3 md:gap-5"
+        >
+          {FEATURES.map(({ icon: Icon, title, desc }) => (
             <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 40, scale: 0.95 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{
-                delay: 0.2 + i * 0.15,
-                duration: 0.5,
-                ease: 'easeOut',
-              }}
+              key={title}
+              variants={fadeUp}
+              className="group rounded-2xl border border-border bg-card p-5 shadow-xs transition-[transform,box-shadow,border-color] duration-200 ease-product hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:p-6"
             >
-              <Card className="bg-card/80 backdrop-blur-sm text-card-foreground hover:shadow-xl hover:scale-[1.03] transition-transform duration-300 ease-in-out border border-border rounded-xl">
-                <CardContent className="space-y-3 p-4 sm:p-6">
-                  <CardTitle className="text-xl font-semibold text-primary">
-                    {feature.title}
-                  </CardTitle>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {feature.desc}
-                  </p>
-                </CardContent>
-              </Card>
+              <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20 transition-colors group-hover:bg-primary/15">
+                <Icon className="h-5 w-5" />
+              </span>
+              <h3 className="text-base font-semibold tracking-tight">
+                {title}
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                {desc}
+              </p>
             </motion.div>
           ))}
-        </section>
-
-        {/* Footer */}
-        <footer className="w-full py-4 sm:py-6 text-center  border-t border-border text-muted-foreground  backdrop-blur-md text-xs sm:text-sm">
-          © {new Date().getFullYear()}{' '}
-          <span className="font-semibold text-primary">Repolens</span>. All
-          rights reserved.
-        </footer>
+        </motion.section>
       </main>
+
+      <footer className="relative z-10 border-t border-border py-5 text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()}{' '}
+        <span className="font-semibold text-foreground">Repolens</span>. All
+        rights reserved.
+      </footer>
     </div>
   );
 }

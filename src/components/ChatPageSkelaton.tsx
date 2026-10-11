@@ -4,30 +4,42 @@ import { Skeleton } from './ui/skeleton';
 
 export function ChatPageSkeleton() {
   return (
-    <main className="h-full w-full flex flex-col bg-background text-foreground px-4 py-8">
-      {/* Chat messages scroll area skeleton */}
-      <section className="flex-1 overflow-y-auto space-y-4 p-2 sm:p-4 md:p-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="max-w-[80%] rounded-2xl shadow-sm p-3 bg-muted animate-pulse"
-            style={{ minHeight: '56px' }}
-          >
-            <Skeleton className="h-4 w-full rounded" />
+    <main className="flex h-full w-full flex-col bg-background text-foreground">
+      {/* Conversation */}
+      <section className="flex-1 overflow-hidden">
+        <div className="mx-auto w-full max-w-3xl space-y-6 px-3 py-6 sm:px-4">
+          {/* assistant */}
+          <div className="flex items-start gap-3">
+            <Skeleton className="h-7 w-7 shrink-0 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
           </div>
-        ))}
+          {/* user */}
+          <div className="flex justify-end">
+            <Skeleton className="h-10 w-2/5 rounded-2xl" />
+          </div>
+          {/* assistant */}
+          <div className="flex items-start gap-3">
+            <Skeleton className="h-7 w-7 shrink-0 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+        </div>
       </section>
 
-      {/* Chat actions bar skeleton */}
-      <div className="sticky bottom-0 left-0 right-0 bg-background px-4 py-2 flex flex-wrap gap-2 items-center justify-start animate-pulse">
-        {['Basic Analysis', 'Get File Structure', 'AI Analysis'].map((_, i) => (
-          <Skeleton key={i} className="rounded-full h-8 w-24 sm:w-28" />
-        ))}
-      </div>
-
-      {/* Chat input skeleton */}
-      <div className="px-4 pb-4 pt-2 animate-pulse">
-        <Skeleton className="w-full h-12 rounded-xl" />
+      {/* Actions + input */}
+      <div className="mx-auto w-full max-w-3xl space-y-3 px-3 pb-4 sm:px-4">
+        <div className="flex gap-2">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-9 w-28 rounded-full" />
+          ))}
+        </div>
+        <Skeleton className="h-14 w-full rounded-2xl" />
       </div>
     </main>
   );
