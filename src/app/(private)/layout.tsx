@@ -10,6 +10,8 @@ import CustomButton from '@/components/CustomButton';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/apiMethods';
 import { useMe } from '@/lib/useMe';
+import DemoBanner from '@/components/DemoBanner';
+import { loginPath } from '@/lib/demo';
 
 export default function AuthenticatedLayout({
   children,
@@ -17,7 +19,7 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { isPending, isError, error, refetch } = useMe();
+  const { data: me, isPending, isError, error, refetch } = useMe();
   // Anything but a transient failure (network, 5xx) means "not logged in"
   const transient = error instanceof ApiError && error.status >= 500;
   const loggedOut = isError && !transient;
@@ -42,7 +44,7 @@ export default function AuthenticatedLayout({
   }, []);
 
   useEffect(() => {
-    if (loggedOut) router.replace('/login');
+    if (loggedOut) router.replace(loginPath());
   }, [loggedOut, router]);
 
   if (isPending || loggedOut) {
@@ -94,6 +96,8 @@ export default function AuthenticatedLayout({
 
       {/* Main Content Area */}
       <div className="flex flex-col flex-1 h-full w-full min-w-0">
+        {me?.isDemo && <DemoBanner demo={me.demo} />}
+
         {/* Header */}
         <Header
           toggleSidebar={() => setSidebarOpen(!sidebarOpen)}

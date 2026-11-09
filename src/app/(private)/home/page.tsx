@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Search,
   Sparkles,
+  Star,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useFormik } from 'formik';
@@ -18,9 +19,11 @@ import { Toast } from '@/lib/Toast';
 import { IAnalyse } from '@/types/repo';
 import { Input } from '@/components/ui/input';
 import CustomButton from '@/components/CustomButton';
-import { useMe } from '@/lib/useMe';
+import Link from 'next/link';
+import { ME_QUERY_KEY, useMe } from '@/lib/useMe';
+import { DEMO_LIMIT_REACHED } from '@/lib/demo';
 import { capitalizeFirstLetter } from '@/lib/utils';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fadeUp, stagger } from '@/lib/motion';
 
 const FEATURES = [
@@ -47,6 +50,21 @@ export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const isDemo = Boolean(user?.isDemo);
+  const demo = user?.demo;
+  const limitReached = !!demo && demo.analysesUsed >= demo.analysesMax;
+  const analysesLeft = demo
+    ? Math.max(demo.analysesMax - demo.analysesUsed, 0)
+    : 0;
+
+  // Sample repos are ready-made, so opening one costs nothing from the quota
+  const { data: samples } = useQuery({
+    queryKey: ['samples'],
+    queryFn: Repository.getSamples,
+    enabled: isDemo,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const formik = useFormik<IAnalyse>({
     initialValues: BODY.REPOSITORY.ANALYSE(),
     validationSchema: Y.repoAnalyseSchema,
@@ -54,6 +72,8 @@ export default function HomePage() {
       setLoading(true);
       const res = await Repository.analyseRepository(val);
       setLoading(false);
+      // Keep the "n of 2 used" counter in the banner and below up to date
+      if (isDemo) queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
       if (res?.success || res?.statusCode === 201) {
         const repoInfo = res.data.basicInfo;
         // 201 = new run queued; 200 = a run is already live for this repo.
@@ -70,6 +90,11 @@ export default function HomePage() {
         queryClient.invalidateQueries({ queryKey: ['repoHistory'] });
         // Navigate to chat page after short delay
         router.push(`/chat/${repoInfo._id}`);
+      } else if (res?.errors?.[0]?.code === DEMO_LIMIT_REACHED) {
+        // Our count may be stale (another tab); the refetch above fixes it
+        Toast.error(
+          res.message || 'Demo limit reached. Sign up to analyse more.'
+        );
       } else {
         Toast.error(res?.message || 'Something went wrong');
       }
@@ -147,7 +172,12 @@ export default function HomePage() {
 
               <CustomButton
                 type="submit"
-                disabled={loading || !formik.values.url || !!formik.errors.url}
+                disabled={
+                  loading ||
+                  limitReached ||
+                  !formik.values.url ||
+                  !!formik.errors.url
+                }
                 className="h-11 w-full whitespace-nowrap px-5 sm:w-auto"
               >
                 {loading ? (
@@ -168,8 +198,69 @@ export default function HomePage() {
                 {urlError}
               </p>
             )}
+            {isDemo && (
+              <p className="mt-2 text-left text-xs text-muted-foreground">
+                {limitReached ? (
+                  <>
+                    Demo limit reached.{' '}
+                    <Link
+                      href="/register"
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      Sign up
+                    </Link>{' '}
+                    to analyse more.
+                  </>
+                ) : (
+                  `${demo?.analysesMax ?? 2} free analyses in demo, ${analysesLeft} left.`
+                )}
+              </p>
+            )}
           </motion.form>
         </motion.section>
+
+        {/* Sample repositories (demo guests) */}
+        {isDemo && samples && samples.length > 0 && (
+          <motion.section
+            variants={stagger(0.08)}
+            initial="hidden"
+            animate="show"
+            className="mt-12 w-full"
+          >
+            <div className="mb-3 text-center">
+              <h2 className="text-lg font-semibold tracking-tight">
+                Or try a sample repository
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Ready to explore instantly. Doesn&rsquo;t use your analyses.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {samples.map((s) => (
+                <motion.div key={s.repoId} variants={fadeUp}>
+                  <Link
+                    href={`/chat/${s.repoId}`}
+                    className="group flex h-full flex-col gap-1.5 rounded-2xl border border-border bg-card p-4 shadow-xs transition-[transform,box-shadow,border-color] duration-200 ease-product hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                  >
+                    <span className="truncate text-sm font-semibold">
+                      {s.owner}/{s.name}
+                    </span>
+                    <span className="line-clamp-2 text-xs text-muted-foreground">
+                      {s.description || 'No description'}
+                    </span>
+                    <span className="mt-auto flex items-center gap-3 pt-2 text-xs text-muted-foreground">
+                      {s.language && <span>{s.language}</span>}
+                      <span className="inline-flex items-center gap-1">
+                        <Star className="h-3 w-3" />
+                        {s.stars.toLocaleString()}
+                      </span>
+                    </span>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </motion.section>
+        )}
 
         {/* Features */}
         <motion.section

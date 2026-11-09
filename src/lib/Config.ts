@@ -10,6 +10,7 @@ export const ENPOINTS = {
     LOGIN: `${API_BASE}/users/login`,
     REGISTER: `${API_BASE}/users/register`,
     LOGOUT: `${API_BASE}/users/logout`,
+    DEMO_LOGIN: `${API_BASE}/users/demo-login`,
     ME: `${API_BASE}/users/me`,
     REFRESH_TOKEN: `${API_BASE}/users/refresh-token`,
     REPOHISTORY: (query?: string) =>
@@ -20,6 +21,7 @@ export const ENPOINTS = {
 
   REPOSITORY: {
     ANALYSE: `${API_BASE}/repository/analyse`,
+    SAMPLES: `${API_BASE}/repository/samples`,
     GET_REPO_INFO: (_id: string) => `${API_BASE}/repository/getRepoInfo/${_id}`,
     STATUS_STREAM: (_id: string) =>
       `${API_BASE}/repository/status-stream/${_id}`,

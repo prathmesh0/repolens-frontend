@@ -2,12 +2,14 @@ import { ApiError, apiPost } from '@/lib/apiMethods';
 import { Toast } from '@/lib/Toast';
 import { clearLegacyAuthStorage } from '@/lib/utils';
 import { ME_QUERY_KEY } from '@/lib/useMe';
+import { clearDemoSession } from '@/lib/demo';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiBaseResponse } from '@/types/api';
 import {
   ILogin,
   ILoginResponse,
   ILogoutResponse,
+  IMe,
   IRegister,
 } from '@/types/auth';
 import { useRouter } from 'next/navigation';
@@ -44,6 +46,7 @@ export const AppContextProvider = ({
       if (res?.statusCode === 200) {
         // The backend set httpOnly cookies; who is logged in comes from
         // GET /users/me.
+        clearDemoSession();
         queryClient.removeQueries({ queryKey: ME_QUERY_KEY });
 
         Toast.success(res?.message || 'Logged in successfully');
@@ -84,6 +87,8 @@ export const AppContextProvider = ({
     }
   };
   const handleLogout = async () => {
+    // Read before the cache is cleared: ending a demo goes back to the start
+    const wasDemo = queryClient.getQueryData<IMe>(ME_QUERY_KEY)?.isDemo;
     try {
       // Call backend logout API
       const res = await apiPost<ApiBaseResponse<ILogoutResponse>>(
@@ -91,7 +96,9 @@ export const AppContextProvider = ({
       );
 
       if (res?.statusCode === 200) {
-        Toast.success('Logged out successfully');
+        Toast.success(
+          wasDemo ? 'Demo ended. Your data was deleted.' : 'Logged out successfully'
+        );
       } else {
         Toast.error(res?.message || 'Logout failed');
       }
@@ -101,8 +108,9 @@ export const AppContextProvider = ({
     } finally {
       // Drop all cached data no matter what; the backend clears the cookies
       clearLegacyAuthStorage();
+      clearDemoSession();
       queryClient.clear();
-      router.push('/login');
+      router.push(wasDemo ? '/' : '/login');
     }
   };
 

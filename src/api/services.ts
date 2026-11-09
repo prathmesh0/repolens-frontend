@@ -3,7 +3,7 @@ import { ApiError, apiGet, apiPost } from '@/lib/apiMethods';
 import { readSSE } from '@/lib/sse';
 import { BODY, ENPOINTS } from '@/lib/Config';
 import { ApiBaseResponse } from '@/types/api';
-import { ILogin, IMe } from '@/types/auth';
+import { IDemoLoginResponse, ILogin, IMe } from '@/types/auth';
 import {
   ChatAnalysisResponse,
   IAIAnalysisResponse,
@@ -13,7 +13,12 @@ import {
   IFullRepoInfo,
   IRepoChatData,
 } from '@/types/chat';
-import { IAnalyse, IRepositoryResponse, RepoHistoryItem } from '@/types/repo';
+import {
+  IAnalyse,
+  IRepositoryResponse,
+  ISampleRepo,
+  RepoHistoryItem,
+} from '@/types/repo';
 
 // Backend errors arrive as { success:false, message, data:null }. Hand that
 // body back so callers keep reading `res.message` / `res.success`.
@@ -28,6 +33,36 @@ export class User {
   public static async getMe(): Promise<IMe> {
     const response = await apiGet<ApiBaseResponse<IMe>>(ENPOINTS.USERS.ME);
     return response.data;
+  }
+
+  // Starts a temporary guest session (the backend sets the session cookie).
+  // Never throws: the button shows `message` for 429 (rate limited) and 503
+  // (demo switched off) and everything else.
+  public static async demoLogin(): Promise<
+    | { ok: true; data: IDemoLoginResponse }
+    | { ok: false; status: number; message: string; code?: string }
+  > {
+    try {
+      const res = await apiPost<ApiBaseResponse<IDemoLoginResponse>>(
+        ENPOINTS.USERS.DEMO_LOGIN
+      );
+      return { ok: true, data: res.data };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const body = error.body as { errors?: { code?: string }[] } | undefined;
+        return {
+          ok: false,
+          status: error.status,
+          message: error.message,
+          code: body?.errors?.[0]?.code,
+        };
+      }
+      return {
+        ok: false,
+        status: 0,
+        message: 'Could not reach the server. Please try again.',
+      };
+    }
   }
 
   public static async handleLogin(body: ILogin) {
@@ -58,6 +93,14 @@ export class User {
 }
 
 export class Repository {
+  // Pre-analysed repos a demo guest can open without using their quota
+  public static async getSamples(): Promise<ISampleRepo[]> {
+    const res = await apiGet<ApiBaseResponse<ISampleRepo[]>>(
+      ENPOINTS.REPOSITORY.SAMPLES
+    );
+    return res.data;
+  }
+
   public static async analyseRepository(
     body: IAnalyse
   ): Promise<IRepositoryResponse | undefined> {

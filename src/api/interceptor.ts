@@ -1,3 +1,5 @@
+import { loginPath } from '@/lib/demo';
+
 // Same-origin proxy (see rewrites in next.config.ts). Auth lives in httpOnly
 // cookies on this origin; JS never sees or sends the tokens.
 const BASE_URL = '/api';
@@ -16,7 +18,8 @@ let refreshPromise: Promise<void> | null = null;
 
 function redirectToLogin() {
   if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-    window.location.href = '/login';
+    // A demo guest whose session ended gets told so on the login page
+    window.location.href = loginPath();
   }
 }
 

@@ -23,11 +23,28 @@ export interface ILoginResponse {
   refreshToken: string;
 }
 
+// Present only for demo guests (GET /users/me and POST /users/demo-login)
+export interface IDemoInfo {
+  analysesUsed: number;
+  analysesMax: number;
+  chatUsed: number;
+  chatMax: number;
+  expiresAt: string;
+}
+
 export interface IMe {
   _id: string;
   username: string;
-  email: string;
+  // Guests have no email
+  email?: string;
   createdAt: string;
+  isDemo?: boolean;
+  demo?: IDemoInfo;
+}
+
+export interface IDemoLoginResponse {
+  user: IMe;
+  accessToken: string;
 }
 
 export interface ILogoutResponse {
