@@ -109,6 +109,12 @@ export interface IFullRepoInfo {
     aiStatus: string;
     embeddingStatus: string;
   };
+  // User-safe reason per stage when it failed
+  statusErrors?: {
+    fileStructure?: string;
+    ai?: string;
+    embedding?: string;
+  };
   message: string;
   success: boolean;
 }
