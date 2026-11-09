@@ -263,6 +263,13 @@ export default function ChatPage() {
           type: 'fileStructure',
           payload: overview.fileStructure,
         });
+      } else if (overview.statuses?.fileStructureStatus === 'failed') {
+        append(
+          userItem,
+          assistantText(
+            `⚠️ ${overview.statusErrors?.fileStructure || 'File structure extraction failed.'} Analyse the repository again to retry.`
+          )
+        );
       } else {
         Toast.info('File structure is still being processed.');
         append(
@@ -280,6 +287,14 @@ export default function ChatPage() {
           type: 'aiAnalysis',
           payload: overview.aiAnalysis,
         });
+      } else if (overview.statuses?.aiStatus === 'failed') {
+        // Say so, instead of "not finished yet" forever
+        append(
+          userItem,
+          assistantText(
+            `⚠️ ${overview.statusErrors?.ai || 'The AI analysis failed.'} Analyse the repository again to retry.`
+          )
+        );
       } else {
         Toast.info('AI analysis is still being processed.');
         append(

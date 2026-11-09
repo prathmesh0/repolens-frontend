@@ -24,7 +24,10 @@ interface IHeaderProps {
 export default function Header({ toggleSidebar, isMobile }: IHeaderProps) {
   const { handleLogout } = useAppContext();
   const { data: user } = useMe();
-  const initial = user?.username?.charAt(0).toUpperCase() || '?';
+  const isDemo = Boolean(user?.isDemo);
+  const initial = isDemo
+    ? 'D'
+    : user?.username?.charAt(0).toUpperCase() || '?';
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/70 px-3 backdrop-blur-xl sm:px-4">
@@ -71,10 +74,10 @@ export default function Header({ toggleSidebar, isMobile }: IHeaderProps) {
               {user ? (
                 <div className="flex flex-col gap-0.5">
                   <span className="truncate text-sm font-medium text-foreground">
-                    {user.username}
+                    {isDemo ? 'Demo guest' : user.username}
                   </span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {user.email}
+                    {isDemo ? 'Temporary session' : user.email}
                   </span>
                 </div>
               ) : (
@@ -91,7 +94,7 @@ export default function Header({ toggleSidebar, isMobile }: IHeaderProps) {
               className="cursor-pointer gap-2 rounded-lg text-destructive focus:text-destructive"
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              {isDemo ? 'End demo' : 'Logout'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -25,7 +25,18 @@ export interface IRepositoryBasicInfo {
   __v: number;
 }
 
+export interface ISampleRepo {
+  repoId: string;
+  name: string;
+  owner: string;
+  description: string;
+  language: string | null;
+  stars: number;
+}
+
 export interface IRepositoryResponse {
+  // Backend error list; demo errors carry a machine-readable code
+  errors?: { code?: string }[];
   statusCode: number;
   data: {
     basicInfo: IRepositoryBasicInfo;

@@ -8,12 +8,37 @@ import { BODY } from '@/lib/Config';
 import { Y } from '@/lib/yup';
 import Link from 'next/link';
 import { useAppContext } from '@/providers/AppContextProvider';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import DemoButton from '@/components/landing/DemoButton';
+import { clearDemoSession } from '@/lib/demo';
+
+// Shown after a demo guest's session ended (expired, or ended elsewhere)
+function DemoEndedNotice() {
+  const ended = useSearchParams().get('demo') === 'ended';
+  useEffect(() => {
+    if (ended) clearDemoSession();
+  }, [ended]);
+  if (!ended) return null;
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/10 p-3 text-sm">
+      <p className="font-medium">Demo session ended</p>
+      <p className="mt-0.5 text-muted-foreground">
+        Demo data is deleted when the session ends. Start a new demo or sign in.
+      </p>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const { handleLogin } = useAppContext();
 
   return (
     <AuthShell>
+      <Suspense>
+        <DemoEndedNotice />
+      </Suspense>
       <div className="space-y-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">
           Welcome Back to Repolens
@@ -78,6 +103,8 @@ export default function LoginPage() {
             >
               Login
             </CustomButton>
+
+            <DemoButton className="h-11 w-full border border-border bg-transparent text-foreground hover:bg-accent" />
 
             <p className="text-center text-sm text-muted-foreground">
               Haven&rsquo;t signed up yet?{' '}
